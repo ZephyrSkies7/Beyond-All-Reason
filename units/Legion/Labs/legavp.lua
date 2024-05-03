@@ -39,7 +39,7 @@ return {
 			"legmrv",
 			"legsco",
 			"legfloat",
-			"corgol",
+			"legajax",
 			"legmed",
 			"cormart",
 			"legvcarry",
