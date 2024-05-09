@@ -37,9 +37,9 @@ return {
 		yardmap = "oooo",
 		customparams = {
 			usebuildinggrounddecal = true,
-			buildinggrounddecaltype = "decals/corrad_aoplane.dds",
-			buildinggrounddecalsizey = 1,
-			buildinggrounddecalsizex = 1,
+			buildinggrounddecaltype = "decals/legrad_aoplane.dds",
+			buildinggrounddecalsizey = 3,
+			buildinggrounddecalsizex = 3,
 			buildinggrounddecaldecayspeed = 30,
 			unitgroup = 'util',
 			model_author = "ZephyrSkies",
