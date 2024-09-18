@@ -1,0 +1,163 @@
+#define TA			// This is a TA script
+
+static-var  Stunned;
+
+#include "sfxtype.h"
+#include "exptype.h"
+
+//piece base, strut, dishA, dishA1, dishA2, dishA3, dishB, dishB1, dishB2, dishB3, blink;
+piece base, strutA, strutB, strutC, strutD, dishConnector, dishA, dishBEmpty, dishCEmpty, dishB, dishC, subdishA, subdishB, subdishC, radarBlink;
+// piece  base, dish, blink;
+
+
+#define BASEPIECE base
+#define HITSPEED <20.0>
+//how 'heavy' the unit is, on a scale of 1-10
+#define UNITSIZE 5
+#define MAXTILT 100
+
+#include "unit_hitbyweaponid_and_smoke.h"
+
+Go()
+{
+	
+    move strutA to y-axis [0] speed [50];
+    wait-for-move strutA along y-axis;
+    move strutB to y-axis [0] speed [50];
+    wait-for-move strutB along y-axis;
+    move strutC to y-axis [0] speed [50];
+    wait-for-move strutC along y-axis;
+    move strutD to y-axis [0] speed [50];
+    wait-for-move strutD along y-axis;
+
+    spin strutA around y-axis speed <10> accelerate <5>;
+    spin strutB around y-axis speed <10> accelerate <5>;
+    spin strutC around y-axis speed <10> accelerate <5>;
+    spin strutD around y-axis speed <10> accelerate <5>;
+
+    spin dishA around z-axis speed <40> accelerate <5>;
+    spin dishBEmpty around z-axis speed <-40> accelerate <5>;
+    spin dishCEmpty around z-axis speed <-40> accelerate <5>;
+    //spin dishB around x-axis speed <40> accelerate <5>;
+    //spin dishC around y-axis speed <40> accelerate <5>;
+
+	return (0);
+}
+
+Stop()
+{
+    stop-spin strutA around y-axis;
+    stop-spin strutB around y-axis;
+    stop-spin strutC around y-axis;
+    stop-spin strutD around y-axis;
+
+	stop-spin dishA around z-axis decelerate <30>;
+	stop-spin dishB around z-axis decelerate <30>;
+	stop-spin dishC around z-axis decelerate <30>;
+	return (0);
+}
+
+
+SetStunned(State)
+{
+    Stunned = State;
+	if (Stunned) {
+	    call-script Stop();
+	} else {
+	    call-script Go();
+	}
+}
+
+Create()
+{
+    
+    move strutA to y-axis [-10] now;
+    move strutB to y-axis [-10] now;
+    move strutC to y-axis [-10] now;
+    move strutD to y-axis [-10] now;
+
+    turn dishC to y-axis <-60> now;
+    turn dishB to y-axis <60> now;
+
+    turn dishCEmpty to y-axis <60> now;
+    turn dishBEmpty to y-axis <-60> now;
+
+	hide radarBlink;
+
+		while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 400;
+	}
+
+	call-script Go();
+
+
+	return (0);
+}
+
+Lights()
+{
+	while( TRUE )
+	{
+	    if (!Stunned) {
+		    emit-sfx 1024 + 0 from radarBlink;
+		}
+		sleep 2500;
+	}
+	sleep 50;
+	start-script Lights();
+}
+
+Activate()
+{
+	start-script Lights();
+	start-script Go();
+	return (0);
+}
+
+Deactivate()
+{
+	start-script Stop();
+	return (0);
+}
+
+SweetSpot(piecenum)
+{
+	piecenum = base;
+	return (0);
+}
+
+Killed(severity, corpsetype)
+{
+	if( severity <= 25 )
+	{
+		corpsetype = 1 ;
+		explode base type BITMAPONLY | NOHEATCLOUD;
+		explode strutA type BITMAPONLY | NOHEATCLOUD;
+		return(corpsetype);
+	}
+	if( severity <= 50 )
+	{
+		corpsetype = 2 ;
+		explode base type BITMAPONLY | NOHEATCLOUD;
+		explode strutA type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		return(corpsetype);
+	}
+	if( severity <= 99 )
+	{
+		corpsetype = 3 ;
+		explode base type BITMAPONLY | NOHEATCLOUD;
+		explode strutA type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		return(corpsetype);
+	}
+	corpsetype = 3 ;
+		explode base type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode strutA type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+        explode strutB type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+        explode strutC type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+        explode strutD type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode dishA type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode dishB type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+        explode dishC type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+	return corpsetype;
+}
