@@ -423,6 +423,10 @@ local icontypes = {
 		bitmap = "icons/shield.png",
 		size = 1.57499993
 	},
+	armgatet3 = {
+		bitmap = "icons/shield.png",
+		size = 1.9425
+	},
 	armgeo = {
 		bitmap = "icons/energy6_1.3.png",
 		size = 1.36499989
@@ -538,6 +542,10 @@ local icontypes = {
 	armmar = {
 		bitmap = "icons/armmar_t3.png",
 		size = 2
+	},
+	legjav = {
+		bitmap = "icons/legjav.png",
+		size = 2.1
 	},
 	armmark = {
 		bitmap = "icons/bot_t2_radar.png",
@@ -1483,6 +1491,10 @@ local icontypes = {
 		bitmap = "icons/shield.png",
 		size = 1.57499993
 	},
+	corgatet3 = {
+		bitmap = "icons/shield.png",
+		size = 1.9425
+	},
 	corgator = {
 		bitmap = "icons/vehicle_t1_raid.png",
 		size = 0.89249998
@@ -2318,6 +2330,10 @@ local icontypes = {
 	legestor = {
 		bitmap = "icons/energystorage.png",
 		size = 1.10249984
+	},
+	legerailtank = {
+		bitmap = "icons/vehicle_t3_tank_rail_mgun.png",
+		size = 2.4000001
 	},
 	legcv = {
 		bitmap = "icons/vehicle_worker.png",
