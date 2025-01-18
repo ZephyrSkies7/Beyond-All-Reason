@@ -21864,6 +21864,17 @@ local unitLights = {
 				lifetime = 0, sustain = 0, animtype = 0},
 		},
 	},
+	['legdeflector'] = {
+		shieldglow = {
+			lightType = 'shieldlight',
+			pieceName = 'shieldFlare',
+			lightConfig = { posx = 0, posy = 0, posz = 0, radius = 55,
+				color2r = 0.1, color2g = 0.45, color2b = 0.15, colortime = 70,
+				r = 0.2, g = 0.9, b = 0.3, a = 0.25,
+				modelfactor = 0.4, specular = 1.0, scattering = 1.3, lensflare = 0,
+				lifetime = 0, sustain = 0, animtype = 0},
+		},
+	},
 	['legrad'] = {
 		greenblobA = {
 			lightType = 'point',

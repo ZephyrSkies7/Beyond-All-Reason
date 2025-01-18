@@ -2379,6 +2379,10 @@ local icontypes = {
 		bitmap = "icons/wall_0.4.png",
 		size = 0.41999999
 	},
+	legdeflector = {
+		bitmap = "icons/shield.png",
+		size = 1.57499993
+	},
 	legeyes = {
 		bitmap = "icons/eye.png",
 		size = 0.89249998
