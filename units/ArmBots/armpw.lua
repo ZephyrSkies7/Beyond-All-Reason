@@ -103,6 +103,7 @@ return {
 		},
 		weapondefs = {
 			emg = {
+				windup = 3,
 				areaofeffect = 8,
 				avoidfeature = false,
 				burst = 3,
