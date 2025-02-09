@@ -2692,7 +2692,7 @@ local icontypes = {
 		size = 1.29999995
 	},
 	legstronghold = {
-		bitmap = "icons/air_trans.png",
+		bitmap = "icons/air_t2_transport_shotgun.png",
 		size = 1.83749986
 	},
 	legjim = {
