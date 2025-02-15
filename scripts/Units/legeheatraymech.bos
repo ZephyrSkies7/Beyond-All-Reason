@@ -9,7 +9,7 @@ piece 	upperTorso, lArmUpperArm, lArmLowerArm, lArmGun, lArmGunCover1, lArmGunCo
 		lArmShoulderGun, midTorso, lowerTorso, legJointTorso, lLegThighPivot, lLegUpperThigh, lLegLowerThigh, lLegtTibio, lLegShin, lLegBackFoot, lLegFrontFoot, 
 		lLegThighJoint, rLegThighPivot, rLegUpperThigh, rLegLowerThigh, rLegTibio, rLegShin, rLegBackFoot, rLegFrontFoot, rLegThighJoint, neck, head, rArmUpperArm, rArmLowerArm, 
 		rArmGun, rArmGunCover1, rArmGunCover2, rArmGunCover3, rArmGunCover4, rArmShoulderJoint, rArmShoulderPivot, rArmShoulderGun, rArmFlare, lArmFlare, rShoulderFlare, lShoulderFlare,
-		rStompFlare, lStompFlare;
+		rStompFlare, lStompFlare, aimDirectionFlare;
 
 
 static-var  InMotion, 
@@ -26,7 +26,8 @@ static-var  InMotion,
 			firetime, 
 			oldhead, 
 			aimAdj, 
-			oldsteerheading;
+			oldsteerheading,
+			torsoaiml, torsoaimr;
 
 lua_UnitScriptDecal(lightIndex, xpos,zpos, heading) 
 {
@@ -932,6 +933,9 @@ Open()
 		turn lArmShoulderJoint to x-axis <-35> speed <50>;
 		turn rArmShoulderJoint to x-axis <-35> speed <50>;
 
+		turn lArmGun to z-axis <18> speed <100>;
+		turn rArmGun to z-axis <-18> speed <100>;
+
 		wait-for-turn rArmLowerArm around z-axis;
 		wait-for-turn lArmLowerArm around z-axis;
 		wait-for-turn lArmGun around x-axis;
@@ -1073,6 +1077,8 @@ Create()
 	firetime = 54;
 	lastfired = get(GAME_FRAME)-200;	
 	restore_delay = 2000;
+	torsoaiml = 0;
+	torsoaimr = 0;
 	call-script SweepFire();
 
 	//
@@ -1094,8 +1100,8 @@ SweepFire()
 		//get PRINT(1235, targetswap, isfiring, timer);
 		if (targetswap == 1 AND isfiring == 1 AND lastfired+firetime>gameframe)
 		{
-            // emit-sfx 2048 from rArmFlare;
-            // emit-sfx 2048 from lArmFlare;
+            emit-sfx 2048 from rArmFlare;
+            emit-sfx 2048 from lArmFlare;
 			timer = timer + 1;
 		}
 		if (timer > 150)
@@ -1137,6 +1143,8 @@ TimeToRestore(addTime){
 	aimAdj = 0;
 	timer = 0;
 	targetswap = 0;
+	torsoaiml = 0;
+	torsoaimr = 0;
 	
 }
 
@@ -1157,6 +1165,38 @@ RestoreBody() // no need to signal, as threads inherit parents signal masks
 }
 
 
+
+// Constants
+// #define TURN_SPEED 5
+// #define PITCH_SPEED 5
+
+// Aim function for midTorso and arm guns
+AimAtTarget(heading, pitch)
+{
+    var armYawL, armYawR;
+    
+    // Step 1: Rotate midTorso to match HEADING
+    turn midTorso to y-axis heading speed <TURN_SPEED>;
+
+    // Step 2: Compute relative yaw for each arm
+    armYawL = heading - lastArmYawL;  // Adjust based on last known position
+    armYawR = heading - lastArmYawR;
+
+    turn lArmGun to y-axis armYawL speed <TURN_SPEED>;
+    turn rArmGun to y-axis armYawR speed <TURN_SPEED>;
+
+    // Step 3: Adjust pitch (vertical aiming)
+    turn lArmGun to x-axis pitch speed <TURN_SPEED>;
+    turn rArmGun to x-axis pitch speed <TURN_SPEED>;
+
+    // Step 4: Update stored values
+    lastArmYawL = heading;
+    lastArmYawR = heading;
+}
+
+
+
+
 AimWeapon1(heading, pitch)
 {
 
@@ -1165,6 +1205,76 @@ AimWeapon1(heading, pitch)
 
 	signal SIG_AIM;
 	set-signal-mask SIG_AIM;
+
+
+	///////
+
+	var gun_xz;
+    gun_xz = get PIECE_XZ(upperTorso);                                //get packed gun coordinates
+    var gun_x;
+    gun_x = (gun_xz & 0xffff0000) / 0x00010000;                //unpack x coordinates of gun (credit for unpack code goes to Beherith)
+    var gun_z;
+    gun_z = (gun_xz & 0x0000ffff);                            //unpack z coordinates of gun
+    
+    var lArm_xz;
+    lArm_xz = get PIECE_XZ(lArmGun);                        //get packed larm coordinates
+    var lArm_x;
+    lArm_x = (lArm_xz & 0xffff0000) / 0x00010000;        //unpack x coordinates of larm
+    var lArm_z;
+    lArm_z = (lArm_xz & 0x0000ffff);                    //unpack z coordinates of larm
+
+    var rArm_xz;
+    rArm_xz = get PIECE_XZ(rArmGun);                        //get packed rarm coordinates
+    var rArm_x;
+    rArm_x = (rArm_xz & 0xffff0000) / 0x00010000;        //unpack x coordinates of rarm
+    var rArm_z;
+    rArm_z = (rArm_xz & 0x0000ffff);                    //unpack z coordinates of rarm
+
+    var hull_xz;
+    hull_xz = get PIECE_XZ(legJointTorso);                            //get packed hull coordinates
+    var hull_x;
+    hull_x = (hull_xz & 0xffff0000) / 0x00010000;            //unpack x coordinates of hull
+    var hull_z;
+    hull_z = (hull_xz & 0x0000ffff);                        //unpack z coordinates of hull
+    
+    var smoke_xz;
+    smoke_xz = get PIECE_XZ(aimDirectionFlare);                            //get packed smoke coordinates
+    var smoke_x;
+    smoke_x = (smoke_xz & 0xffff0000) / 0x00010000;            //unpack x coordinates of smoke
+    var smoke_z;
+    smoke_z = (smoke_xz & 0x0000ffff);                        //unpack z coordinates of smoke
+
+	var face_x;
+    var face_z;
+    face_x = hull_x - smoke_x;                                //calculate relative coordinates of the hull to the smoke (how far away it is in each direction)
+    face_z = hull_z - smoke_z;
+
+	var cauface;
+	cauface = get ATAN(face_z, face_x);
+
+	var aim1_x;
+    var aim1_z;
+    aim1_x = gun_x - lArm_x;                                //calculate relative coordinates of the gun to the turret (how far away it is in each direction)
+    aim1_z = gun_z - lArm_z;
+
+	var aim2_x;
+    var aim2_z;
+    aim2_x = gun_x - rArm_x;                               //calculate relative coordinates of the gun to the turret (how far away it is in each direction)
+    aim2_z = gun_z - rArm_z;
+
+	var cauaiml;
+	var cauaimr;
+
+	cauaiml = get ATAN(aim1_z, aim1_x);
+	cauaimr = get ATAN(aim2_z, aim2_x);
+
+    torsoaimr = cauface - cauaimr;
+    torsoaiml = cauface - cauaiml;                                  //calculate angle of turret relative to the hull  
+
+
+
+	//////
+
     if (timeLeft == 0)
     {
         start-script TimeToRestore();
@@ -1176,13 +1286,19 @@ AimWeapon1(heading, pitch)
 	}
 	gameframe = get(GAME_FRAME);
 	turn midTorso to y-axis (heading) speed <100>;
-	turn lArmGun to z-axis <0> - pitch speed <30>;
-	turn lArmGun to y-axis <0> + (pitch) speed <30>;
-	turn lArmGun to x-axis <0> - (pitch+600) speed <30>;
 
-	turn rArmGun to x-axis <0> - (pitch+600) speed <30>;
-	turn rArmGun to y-axis <0> - (pitch) speed <30>;
-	turn rArmGun to z-axis <0> + pitch speed <30>;
+
+
+	turn lArmGun to z-axis <18> speed <100>;
+	turn rArmGun to z-axis <-18> speed <100>;
+	turn lArmGun to x-axis ((-1*pitch)-355) speed <100>;
+	turn rArmGun to x-axis ((-1*pitch)-355) speed <100>;
+	turn lArmGun to y-axis (heading ) speed <30>;
+	turn rArmGun to y-axis (heading ) speed <30>;
+
+
+
+
 	if (((get ABS(oldhead - heading)) > 65536) OR(((get ABS(oldhead - heading)) > 5000) AND ((get ABS(oldhead - heading)) < 64236)))
 	{
 		oldhead = 1000000;
@@ -1214,7 +1330,7 @@ FireWeapon1()
 
 AimFromWeapon1(pieceIndex)
 {
-	pieceIndex = lArmGun;
+	pieceIndex = upperTorso;
 }
 
 QueryWeapon1(pieceIndex)
