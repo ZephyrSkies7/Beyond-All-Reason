@@ -932,6 +932,9 @@ Open()
 		turn lArmShoulderJoint to x-axis <-35> speed <50>;
 		turn rArmShoulderJoint to x-axis <-35> speed <50>;
 
+		turn lArmGun to z-axis <-18> speed <100>;
+		turn rArmGun to z-axis <18> speed <100>;
+
 		wait-for-turn rArmLowerArm around z-axis;
 		wait-for-turn lArmLowerArm around z-axis;
 		wait-for-turn lArmGun around x-axis;
