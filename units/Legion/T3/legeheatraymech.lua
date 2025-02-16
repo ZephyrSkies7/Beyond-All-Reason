@@ -160,19 +160,16 @@ return {
 		},
 		weapons = {
 			[1] = {
-				badtargetcategory = "VTOL GROUNDSCOUT",
-				def = "heatray1",
+				def = "AIMHULL",
 				onlytargetcategory = "SURFACE",
-				fastautoretargeting = true,
-				burstControlWhenOutOfArc = 2,
 			},
 			[2] = {
+				
 				badtargetcategory = "VTOL GROUNDSCOUT",
 				def = "heatray1",
 				onlytargetcategory = "SURFACE",
 				fastautoretargeting = true,
 				burstControlWhenOutOfArc = 2,
-				slaveTo = 1,
 			},
 			[3] = {
 				badtargetcategory = "VTOL GROUNDSCOUT",
@@ -183,6 +180,14 @@ return {
 				slaveTo = 1,
 			},
 			[4] = {
+				badtargetcategory = "VTOL GROUNDSCOUT",
+				def = "heatray1",
+				onlytargetcategory = "SURFACE",
+				fastautoretargeting = true,
+				burstControlWhenOutOfArc = 2,
+				slaveTo = 1,
+			},
+			[5] = {
 				badtargetcategory = "VTOL GROUNDSCOUT",
 				def = "heatray1",
 				onlytargetcategory = "SURFACE",
