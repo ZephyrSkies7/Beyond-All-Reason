@@ -70,14 +70,14 @@ if gadgetHandler:IsSyncedCode() then
 		end
 		Spring.SetUnitNoSelect(unitID, true)
 		Spring.SetUnitNoMinimap(unitID, true)
-		Spring.UnitIconSetDraw(unitID, false)
+		Spring.SetUnitIconDraw(unitID, false)
 		Spring.SetUnitSensorRadius(unitID, 'los', 0)
 		Spring.SetUnitSensorRadius(unitID, 'airLos', 0)
 		Spring.SetUnitSensorRadius(unitID, 'radar', 0)
 		Spring.SetUnitSensorRadius(unitID, 'sonar', 0)
 	end
 
-	function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
+	function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam, weaponDefID)
 		if isDecoration[unitDefID] then
 			numDecorations = numDecorations - 1
 		end

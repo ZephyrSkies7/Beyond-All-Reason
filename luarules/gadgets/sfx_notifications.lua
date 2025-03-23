@@ -81,7 +81,6 @@ if gadgetHandler:IsSyncedCode() then
 
 	-- NUKE LAUNCH send to all but ally team
 	function gadget:ProjectileCreated(proID, proOwnerID, weaponDefID)
-		local proDefID = Spring.GetProjectileDefID(proID)
 		if nukeWeapons[Spring.GetProjectileDefID(proID)] then
 			local players = AllButAllyTeamID(GetAllyTeamID(Spring.GetUnitTeam(proOwnerID)))
 			for ct, player in pairs (players) do
@@ -195,7 +194,7 @@ else
 		end
 	end
 
-	function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
+	function gadget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam, weaponDefID)
 		local unitInView = Spring.IsUnitInView(unitID)
 
 		-- if own and not killed by yourself
