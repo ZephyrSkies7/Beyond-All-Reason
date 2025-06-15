@@ -78,7 +78,6 @@ local absoluteResbarValues = false
 
 local curFrame = Spring.GetGameFrame()
 
-local fontfile2 = "fonts/" .. Spring.GetConfigString("bar_font2", "Exo2-SemiBold.otf")
 local font, font2
 
 local AdvPlayersListAtlas
@@ -109,6 +108,7 @@ local Spring_GetTeamStatsHistory = Spring.GetTeamStatsHistory
 
 local ColorString = Spring.Utilities.Color.ToString
 local ColorArray = Spring.Utilities.Color.ToIntArray
+local ColorIsDark = Spring.Utilities.Color.ColorIsDark
 
 local gl_Texture = gl.Texture
 local gl_Color = gl.Color
@@ -809,6 +809,23 @@ local function rankTeamPlayers()
     end
 end
 
+local function speclistCmd(_, _, params)
+	if params[1] then
+		if params[1] == '1' then
+			specListShow = true
+			alwaysHideSpecs = false
+		else
+			specListShow = false
+			alwaysHideSpecs = true
+		end
+	else
+		specListShow = not specListShow
+	end
+	SortList()
+	SetModulesPositionX() --why?
+	CreateLists()
+end
+
 function widget:Initialize()
 	widget:ViewResize()
 
@@ -891,6 +908,8 @@ function widget:Initialize()
 			end
 		end
 	end
+
+	widgetHandler:AddAction("speclist", speclistCmd, nil, 't')
 end
 
 
@@ -939,11 +958,11 @@ function widget:Shutdown()
         WG['guishader'].RemoveDlist('advplayerlist')
     end
 	if mainListBgTex then
-		gl.DeleteTextureFBO(mainListBgTex)
+		gl.DeleteTexture(mainListBgTex)
 	end
 	if mainListTex then
-		gl.DeleteTextureFBO(mainListTex)
-		gl.DeleteTextureFBO(mainList2Tex)
+		gl.DeleteTexture(mainListTex)
+		gl.DeleteTexture(mainList2Tex)
 	end
     WG['advplayerlist_api'] = nil
     widgetHandler:DeregisterGlobal('ActivityEvent')
@@ -967,6 +986,8 @@ function widget:Shutdown()
     if Background then
         gl_DeleteList(Background)
     end
+
+	widgetHandler:RemoveAction("speclist")
 end
 
 function SetSidePics()
@@ -1132,7 +1153,7 @@ function CreatePlayer(playerID)
         red = tred,
         green = tgreen,
         blue = tblue,
-        dark = GetDark(tred, tgreen, tblue),
+        dark = ColorIsDark(tred, tgreen, tblue),
         side = tside,
         pingLvl = tpingLvl,
         cpuLvl = tcpuLvl,
@@ -1225,7 +1246,7 @@ function CreatePlayerFromTeam(teamID)
         red = tred,
         green = tgreen,
         blue = tblue,
-        dark = GetDark(tred, tgreen, tblue),
+        dark = ColorIsDark(tred, tgreen, tblue),
         side = tside,
         totake = ttotake,
         dead = tdead,
@@ -1296,18 +1317,6 @@ function UpdatePlayerResources()
     updateFastRateMult = math.clamp(displayedPlayers*0.07, 1, 3.3)
 end
 
-function GetDark(red, green, blue)
-    -- Determines if the player color is dark (i.e. if a white outline for the sidePic is needed)
-    --
-    -- Threshold was changed since the new SPADS colors include green and blue which were
-    -- just below the old threshold of 0.8
-    -- https://github.com/Yaribz/SPADS/commit/e95f4480b98aafd03420ba3de19feb5494ef0b7e
-    if red + green * 1.2 + blue * 0.4 < 0.65 then
-        return true
-    end
-    return false
-end
-
 ---------------------------------------------------------------------------------------------------
 --  Sorting player data
 -- note: SPADS ensures that order of playerIDs/teams/allyteams as appropriate reflects TS (mu) order
@@ -1365,7 +1374,7 @@ function SortList()
         end
     end
     local deadTeamSize = 0.66
-    playerScale = math.min(1, 38 / (aliveTeams+(deadTeams*deadTeamSize)))
+    playerScale = math.min(1, 37 / (aliveTeams+(deadTeams*deadTeamSize)))
     if #Spring_GetAllyTeamList() > 24 then
         playerScale = playerScale - 0.05 - (playerScale * ((#Spring_GetAllyTeamList()-2)/200))  -- reduce size some more when mega ffa
     end
@@ -1769,17 +1778,17 @@ function CreateBackground()
         end
 		if useRenderToTexture then
 			if mainListTex then
-				gl.DeleteTextureFBO(mainListTex)
+				gl.DeleteTexture(mainListTex)
 				mainListTex = nil
 			end
 			if mainList2Tex then
-				gl.DeleteTextureFBO(mainList2Tex)
+				gl.DeleteTexture(mainList2Tex)
 				mainList2Tex = nil
 			end
 		end
 		if useRenderToTextureBg then
 			if mainListBgTex then
-				gl.DeleteTextureFBO(mainListBgTex)
+				gl.DeleteTexture(mainListBgTex)
 				mainListBgTex = nil
 			end
 			local width, height = math.floor(apiAbsPosition[4]-apiAbsPosition[2]), math.floor(apiAbsPosition[1]-apiAbsPosition[3])
@@ -2696,12 +2705,8 @@ function DrawName(name, team, posY, dark, playerID, desynced)
     local fontsize = (isAbsent and 9 or 14) * math.clamp(1+((1-(vsy/1200))*0.5), 1, 1.2)
     fontsize = fontsize * (playerScale + ((1-playerScale)*0.25))
     if dark then
-        font2:SetOutlineColor(0.8, 0.8, 0.8, math.max(useRenderToTexture and 0.95 or 0.8, 0.75 * widgetScale))
+        font2:SetOutlineColor(0.75, 0.75, 0.75, 1)
     else
-        font2:SetTextColor(0, 0, 0, useRenderToTexture and 0.8 or 0.4)
-        font2:SetOutlineColor(0, 0, 0, useRenderToTexture and 0.8 or 0.4)
-        font2:Print(nameText, m_name.posX + widgetPosX + 2 + xPadding, posY + (3*playerScale), fontsize, "n") -- draws name
-        font2:Print(nameText, m_name.posX + widgetPosX + 4 + xPadding, posY + (3*playerScale), fontsize, "n") -- draws name
         font2:SetOutlineColor(0, 0, 0, 1)
     end
     if (not mySpecStatus) and anonymousMode ~= "disabled" and playerID ~= myPlayerID then
@@ -2713,7 +2718,7 @@ function DrawName(name, team, posY, dark, playerID, desynced)
         font2:SetOutlineColor(0, 0, 0, useRenderToTexture and 0.8 or 0.4)
         font2:SetTextColor(0.45,0.45,0.45,1)
     end
-    font2:Print(nameText, m_name.posX + widgetPosX + 3 + xPadding, posY + (4*playerScale), fontsize, dark and "o" or "n")
+    font2:Print(nameText, m_name.posX + widgetPosX + 3 + xPadding, posY + (4*playerScale), fontsize, "o")
 
     --desynced = playerID == 1
 	if desynced then
@@ -3572,7 +3577,7 @@ function CheckPlayersChange()
 				else
 					player[i].red, player[i].green, player[i].blue = Spring_GetTeamColor(teamID)
 				end
-                player[i].dark = GetDark(player[i].red, player[i].green, player[i].blue)
+                player[i].dark = ColorIsDark(player[i].red, player[i].green, player[i].blue)
                 player[i].skill = GetSkill(i)
                 sorting = true
             end
@@ -3819,9 +3824,10 @@ function widget:ViewResize()
 
     updateWidgetScale()
 
-	local outlineMult = math.clamp(1/(vsy/1400), 1, 2)
-	font = WG['fonts'].getFont(nil, 1.3, 0.5 * (useRenderToTexture and outlineMult or 1), useRenderToTexture and 1.2+(outlineMult*0.2) or 1.2)
-    font2 = WG['fonts'].getFont(fontfile2, 1.8, 0.7 * (useRenderToTexture and outlineMult or 1), 1.2+(outlineMult*0.2))
+	font = WG['fonts'].getFont()
+    font2 = WG['fonts'].getFont(2, 1.5)
+	--local outlineMult = math.clamp(1/(vsy/1400), 1, 1.5)
+    --font2 = WG['fonts'].getFont(2, 1.1, 0.2 * outlineMult, 1.7+(outlineMult*0.2))
 
 	local MakeAtlasOnDemand = VFS.Include("LuaUI/Include/AtlasOnDemand.lua")
 	if AdvPlayersListAtlas then
@@ -3852,29 +3858,5 @@ function widget:MapDrawCmd(playerID, cmdType, px, py, pz)
         elseif cmdType == 'erase' then
             player[playerID].eraserTime = now + pencilDuration
         end
-    end
-end
-
-
-function widget:TextCommand(command)
-    if string.sub(command, 1, 8) == 'speclist' then
-        local words = {}
-        for w in command:gmatch("%S+") do
-            words[#words+1] = w
-        end
-        if string.sub(command, 10, 10) ~= '' then
-            if string.sub(command, 10, 10) == '0' then
-                specListShow = false
-				alwaysHideSpecs = true
-            elseif string.sub(command, 10, 10) == '1' then
-                specListShow = true
-				alwaysHideSpecs = false
-            end
-        else
-            specListShow = not specListShow
-        end
-        SortList()
-        SetModulesPositionX() --why?
-        CreateLists()
     end
 end
