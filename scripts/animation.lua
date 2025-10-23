@@ -7,18 +7,21 @@ function animSpin(getid, getpiece, getaxis, getspeed)
 	local last_inbuilt = true
 
 	while (true) do
-		local inProgress = Spring.GetUnitIsBeingBuilt(id)
-		if (inProgress ~= last_inbuilt) then
-			last_inbuilt = inProgress
-			if (inProgress) then
-				StopSpin( piece, axis, speed )
-			else
-				Spin( piece, axis, speed )
+		local inbuilt = select(5,Spring.GetUnitHealth(id)) < 1
+			if (inbuilt ~= last_inbuilt) then
+				last_inbuilt = inbuilt
+				if (inbuilt) then
+					StopSpin( piece, axis, speed )
+				else
+					Spin( piece, axis, speed )
+				end
 			end
-		end
 		Sleep(1000)
 	end
+
+
 end
+
 
 
 -- Start smoke effect after the model was built
@@ -29,21 +32,26 @@ function animSmoke(getid, getpiece)
 	local last_inbt = true
 
 	while (true) do
-		local inProgress = Spring.GetUnitIsBeingBuilt(id)
-		if (inProgress ~= last_inbt) then
-			last_inbt = inProgress
-			if (inProgress) then
-				--nothing
-			else
-				while (true) do
-					EmitSfx(piece, SFX.BLACK_SMOKE)
-					Sleep(100)
+		local inbt = select(5,Spring.GetUnitHealth(id)) < 1
+			if (inbuilt ~= last_inbt) then
+				last_inbt = inbuilt
+				if (inbuilt) then
+					--nothing
+				else
+					while (true) do
+						EmitSfx(piece, SFX.BLACK_SMOKE)
+						Sleep(100)
+					end
 				end
 			end
-		end
 		Sleep(1000)
 	end
+
+
 end
+
+
+
 
 
 -- Start fire2 at low health level
@@ -53,21 +61,23 @@ function animBurn(getid, getpiece)
 	local last_inb = true
 
 	while (true) do
-		local inProgress = Spring.GetUnitIsBeingBuilt(id)
-		if (inProgress ~= last_inb) then
-			last_inb = inProgress
-			if (inProgress) then
-				--nothing
-			else
-				while (true) do
-					local health = GetUnitValue(COB.HEALTH)
-					if (health<=10) then
-						EmitSfx(piece, 1024+0)
+		local inbuilt = select(5,Spring.GetUnitHealth(id)) < 1
+			if (inbuilt ~= last_inb) then
+				last_inb = inbuilt
+				if (inbuilt) then
+					--nothing
+				else
+					while (true) do
+						local health = GetUnitValue(COB.HEALTH)
+						if (health<=10) then
+							EmitSfx(piece, 1024+0)
+						end
+						Sleep(100)
 					end
-					Sleep(100)
 				end
 			end
-		end
 		Sleep(1000)
 	end
+
+
 end
