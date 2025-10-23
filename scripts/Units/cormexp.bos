@@ -1,295 +1,389 @@
+#define TA			// This is a TA script
 
-#include "../recoil_common_includes.h"
+#include "sfxtype.h"
+#include "exptype.h"
+
+//piece  base, stands, shell, rotary, dingle1, dingle2, turret1, patch,       sleeve1, barrel1, flare1, barrel2, flare2, post, turret2, rocketbox,       rocket1, rocket2, rocket3, rocket4, smoke1, smoke2, smoke3, smoke4,       armor1, armor2, armor3, armor4, armor5, armor6, armor7, armor8,       fakeshell;
 
 piece base, column, top, turret1, turret2, barrel, flare1, flare2, flare3, aimpoint;
 
-static-var  ExtractionSpeed, restore_delay, gun_1, gun_2, column_going_up, weapon_state;
-static-var  Stunned;
-
-// weapon states
-// weapon_state = 0, fully retracted
-// weapon_state = 1, popping up
-// weapon_state = 2, popped up, barrels still retracted
-// weapon_state = 3, barrel deploying
-// weapon_state = 4, fully deployed
-// weapon_state = 5, barrel retracting
-// weapon_state = 6, popping down
+static-var  Static_Var_1, Static_Var_2, Static_Var_3, Static_Var_4, restore_delay,
+            gun_1, gun_2, Static_Var_8, Static_Var_9, Static_Var_10,
+            Static_Var_11, Static_Var_12, bAiming, statechg_DesiredState, statechg_StateChanging;
 
 // Signal definitions
-#define SIGNAL_AIM1 256
-#define SIGNAL_AIM2 512
-#define SIGNAL_TURNON 4
+#define SIG_AIM				2
+#define SIG_AIM_2			4
 
 
-#define BASEPIECE base
-#define MAXTILT 0
-#include "../unit_hitbyweaponid_and_smoke.h"
+SmokeUnit(healthpercent, sleeptime, smoketype)
+{
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 400;
+	}
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 256 | 2;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 256 | 1;
+			}
+			emit-sfx smoketype from base;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
+}
+
+RaiseArmor()
+{
+	move top to y-axis [-14] speed [28];
+	move barrel to z-axis [-5] speed [28];
+	sleep 300;
+	set ARMORED to 0;
+}
+
+LowerArmor()
+{
+	move top to y-axis [0] speed [28];
+	move barrel to z-axis [0] speed [28];
+	set ARMORED to 1;
+
+	sleep 300;
+}
+
+fixGo()
+{
+	Static_Var_4 = 0;
+	signal 8;
+	Static_Var_8 = 0;
+	start-script RaiseArmor();
+	if( Static_Var_11 )
+	{
+
+	}
+	set ACTIVATION to 100;
+
+}
 
 triplepenetration(){
-  // extraction animation
+
 	while(TRUE){
-    if ( !Stunned AND ExtractionSpeed > 0)
-    // only animate if not stunned and is extracting
-    {
-      // use get MAX statements to avoid stuck animations when ExtractionSpeed=0
-      column_going_up = TRUE;
-      // weapon deploy may desire to interrupt the upwards stroke
-      if( weapon_state == 0 ) // normal stroke distance
-  		{
-  			move column to y-axis [20] speed ( get MAX(250000,ExtractionSpeed/2) );
-      }
-      else // half stroke if weapon is deployed
-      {
-        move column to y-axis [13.5] speed ( get MAX(250000,ExtractionSpeed/2) );
-      }
-  		wait-for-move column along y-axis;
-      column_going_up = FALSE;
-  		move column to y-axis [0] speed ( get MAX(1000000,ExtractionSpeed*2) );
-  	  wait-for-move column along y-axis;
-    }
-    sleep 1000;
+		if(TRUE )
+		{
+			move column to y-axis [20] speed [30];
+			wait-for-move column along y-axis;
+			move column to y-axis [0] speed [30];
+			wait-for-move column along y-axis;
+		}
+		sleep 1000;
 	}
+}
+
+Stop()
+{
+	if( !Static_Var_4 )
+	{
+		start-script LowerArmor();
+		set ACTIVATION to 0;
+		gun_2 = base;
+	}
+	Static_Var_4 = 1;
+	Static_Var_8 = 1;
+}
+
+InitState()
+{
+	statechg_DesiredState = TRUE;
+	statechg_StateChanging = FALSE;
+}
+
+RequestState(requestedstate, currentstate)
+{
+	if( statechg_StateChanging )
+	{
+		statechg_DesiredState = requestedstate;
+		return (0);
+	}
+	statechg_StateChanging = TRUE;
+	currentstate = statechg_DesiredState;
+	statechg_DesiredState = requestedstate;
+	while( statechg_DesiredState != currentstate )
+	{
+		if( statechg_DesiredState == 0 )
+		{
+			call-script fixGo();
+			currentstate = 0;
+		}
+		if( statechg_DesiredState == 1 )
+		{
+			call-script Stop();
+			currentstate = 1;
+		}
+	}
+	statechg_StateChanging = FALSE;
 }
 
 Create()
 {
-	hide aimpoint;
-	hide flare3;
-	hide flare2;
-	hide flare1;
-	ExtractionSpeed = 500;
+	Static_Var_1 = 500;
+	Static_Var_2 = 100;
+	Static_Var_3 = 1092;
+	Static_Var_4 = 0;
+	Static_Var_8 = 0;
 	gun_1 = base;
+	Static_Var_11 = 0;
+	Static_Var_12 = 0;
 	gun_2 = base;
+	Static_Var_9 = 0;
+	Static_Var_10 = 0;
 	restore_delay = 5000;
-  set ARMORED to 0; //makes sure no armor state is applied
-	SLEEP_UNTIL_UNITFINISHED;
-  weapon_state = 4;
-  start-script RetractWeapon();
+	bAiming = FALSE;
+	call-script InitState();
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 250;
+	}
+	start-script SmokeUnit();
 	start-script triplepenetration();
+	set ARMORED to 0;
 }
 
 Activate()
 {
+	start-script RequestState(0);
 }
 
 Deactivate()
 {
-}
-
-ExecuteRestoreAfterDelay()
-{
-    if (Stunned) {
-        return (1);
-    }
-  start-script RetractWeapon();
-}
-
-SetStunned(State)
-{
-    Stunned = State;
+	start-script RequestState(1);
 }
 
 RestoreAfterDelay()
 {
-	sleep 6000;
-	start-script ExecuteRestoreAfterDelay();
+	sleep 10000;
+	set-signal-mask 0;
+	bAiming = FALSE;
+	start-script RequestState(0);
 }
 
-SetMaxReloadTime(reloadMS)
+SetMaxReloadTime(Func_Var_1)
 {
-	restore_delay = reloadMS * 10;
+	restore_delay = Func_Var_1 * 10;
 }
 
-DeployWeapon()
+AimPrimary(heading, pitch)
 {
-  signal SIGNAL_TURNON;
-  set-signal-mask SIGNAL_TURNON;
-
-  if (column_going_up == TRUE)
-  // interrupt column movement upwards to the half-stroke distance
-  {
-    move column to y-axis [13.5] speed ( get MAX(250000,ExtractionSpeed/2) );
-  }
-
-  // begin deploying weapon, setting weapon_state as we go
-  move top to y-axis [0] speed [28];
-  weapon_state = 1;
-  wait-for-move top along y-axis;
-  weapon_state = 2;
-	move barrel to z-axis [0] speed [28];
-  weapon_state = 3;
-  wait-for-move barrel along z-axis;
-  weapon_state = 4;
-}
-
-RetractWeapon()
-{
-  signal SIGNAL_TURNON;
-	set-signal-mask SIGNAL_TURNON;
-
-  if (weapon_state == 4 OR weapon_state == 5 OR weapon_state == 3)
-  // if weapon is fully deployed, or barrel is moving
-  {
-    move barrel to z-axis [-5] speed [28];
-    weapon_state = 5;
-    wait-for-move barrel along z-axis;
-    weapon_state = 2;
-  }
-
-  if (weapon_state == 2 OR weapon_state == 6 OR weapon_state == 1)
-  // if weapon is popped up and barrels retracted, or moving vertically
-  {
-    move top to y-axis [-14] speed [28];
-    weapon_state = 6;
-    wait-for-move top along y-axis;
-    weapon_state = 0;
-  }
-}
-
-AimWeapon1(heading, pitch)
-{
-
-  if ( ExtractionSpeed == 0 ) // only allow attacking when extracting
-  {
-  return (0);
-  }
-
-	if( !(weapon_state == 4) )
+	if( get ACTIVATION )
 	{
-    call-script DeployWeapon();
+		bAiming = TRUE;
+		start-script RequestState(1);
 	}
-  signal SIGNAL_AIM1;
-	set-signal-mask SIGNAL_AIM1;
-	turn turret1 to y-axis heading speed 40000;
+	signal SIG_AIM;
+	set-signal-mask SIG_AIM;
+	while( !Static_Var_4 )
+	{
+		sleep 250;
+	}
+	Static_Var_12 = heading;
+	turn turret1 to y-axis Static_Var_12 speed Static_Var_9;
 	wait-for-turn turret1 around y-axis;
-	start-script RestoreAfterDelay();
+	if( bAiming )
+	{
+		start-script RestoreAfterDelay();
+	}
 	return (1);
 }
 
-FireWeapon1()
+FirePrimary()
 {
+	if( gun_1 == 0 )
+	{
+		show flare1;
+		sleep 250;
+		hide flare1;
+	}
+	if( gun_1 == 1 )
+	{
+		show flare2;
+		sleep 250;
+		hide flare2;
+	}
 	++gun_1;
-	if( gun_1 >= 2 )
+	if( gun_1 == 2 )
 	{
 		gun_1 = 0;
 	}
 }
 
-AimFromWeapon1(pieceIndex)
+AimFromPrimary(piecenum)
 {
-	pieceIndex = aimpoint;
+	piecenum = aimpoint;
 }
 
-QueryWeapon1(pieceIndex)
+QueryPrimary(piecenum)
 {
 	if( gun_1 == 0 )
 	{
-		pieceIndex = flare1;
+		piecenum = flare1;
 	}
 	if( gun_1 == 1 )
 	{
-		pieceIndex = flare2;
+		piecenum = flare2;
 	}
 }
 
-AimWeapon2(heading, pitch)
+Reload()
 {
-
-  if ( ExtractionSpeed == 0 ) // only allow attacking when extracting
-  {
-  return (0);
-  }
-
-  if( !(weapon_state == 4) )
-  {
-    call-script DeployWeapon();
-  }
-  signal SIGNAL_AIM2;
-  set-signal-mask SIGNAL_AIM2;
-  turn turret2 to y-axis heading speed 40000;
-  wait-for-turn turret2 around y-axis;
-  start-script RestoreAfterDelay();
-  return (1);
+	signal 8;
+	set-signal-mask 8;
+	sleep 5000;
+	gun_2 = base;
+	Static_Var_8 = 1;
 }
 
-Shot2(zero)
+AimSecondary(heading, pitch)
 {
-  emit-sfx 257 from barrel;
+	if( get ACTIVATION )
+	{
+		bAiming = TRUE;
+		start-script RequestState(1);
+	}
+	signal SIG_AIM_2;
+	set-signal-mask SIG_AIM_2;
+	while( !Static_Var_8 )
+	{
+		sleep 250;
+	}
+	turn turret2 to y-axis heading speed Static_Var_9;
+	wait-for-turn turret2 around y-axis;
+	return (1);
 }
 
-FireWeapon2()
+FireSecondary()
 {
+	if( gun_2 == 0 )
+	{
+		emit-sfx 257 from barrel;
+	}
+	if( gun_2 == 1 )
+	{
+		emit-sfx 257 from barrel;
+	}
+	if( gun_2 == 2 )
+	{
+		emit-sfx 257 from barrel;
+	}
+	if( gun_2 == 3 )
+	{
+		emit-sfx 257 from barrel;
+	}
+	++gun_2;
+	if( gun_2 == 4 )
+	{
+		gun_2 = 0;
+		Static_Var_8 = 0;
+		start-script Reload();
+	}
 }
 
-AimFromWeapon2(pieceIndex)
+AimFromSecondary(piecenum)
 {
-	pieceIndex = aimpoint;
+	piecenum = aimpoint;
 }
 
-QueryWeapon2(pieceIndex)
+QuerySecondary(piecenum)
 {
-  pieceIndex = flare3;
+	if( gun_2 == 0 )
+	{
+		piecenum = flare3;
+	}
+	if( gun_2 == 1 )
+	{
+		piecenum = flare3;
+	}
+	if( gun_2 == 2 )
+	{
+		piecenum = flare3;
+	}
+	if( gun_2 == 3 )
+	{
+		piecenum = flare3;
+	}
 }
 
-SetSpeed(windOrMetal)
+SetSpeed(Func_Var_1)
 {
-	ExtractionSpeed = windOrMetal * 500; //ExtractionSpeed ~= 2,000,000 on a +2 mex
+	Static_Var_1 = Func_Var_1 * 27;
+	Static_Var_9 = Func_Var_1 * 10;
+	Static_Var_10 = Static_Var_9;
 }
 
-
+SweetSpot(piecenum)
+{
+	piecenum = base;
+}
 
 Killed(severity, corpsetype)
 {
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode column type BITMAPONLY | NOHEATCLOUD;
-		explode top type BITMAPONLY | NOHEATCLOUD;
-		explode turret1 type BITMAPONLY | NOHEATCLOUD;
-		explode barrel type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare1 type BITMAPONLY | NOHEATCLOUD;
-		explode flare2 type BITMAPONLY | NOHEATCLOUD;
-		explode turret2 type BITMAPONLY | NOHEATCLOUD;
-		explode flare3 type BITMAPONLY | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode column type BITMAPONLY;
+		explode top type BITMAPONLY;
+		explode turret1 type BITMAPONLY;
+		explode barrel type FIRE | SMOKE | FALL;
+		explode flare1 type BITMAPONLY;
+		explode flare2 type BITMAPONLY;
+		explode turret2 type BITMAPONLY;
+		explode flare3 type BITMAPONLY;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode top type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret1 type FALL | NOHEATCLOUD;
-		explode barrel type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare1 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare3 type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode top type FIRE | SMOKE | FALL;
+		explode turret1 type FALL;
+		explode barrel type FIRE | SMOKE | FALL;
+		explode flare1 type FIRE | SMOKE | FALL;
+		explode flare2 type FIRE | SMOKE | FALL;
+		explode turret2 type FIRE | SMOKE | FALL;
+		explode flare3 type FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode column type BITMAPONLY | NOHEATCLOUD;
-		explode top type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret1 type SMOKE | FALL | NOHEATCLOUD;
-		explode barrel type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare1 type SMOKE | FALL | NOHEATCLOUD;
-		explode flare2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare3 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode column type BITMAPONLY;
+		explode top type SHATTER;
+		explode turret1 type SMOKE | FALL;
+		explode barrel type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare1 type SMOKE | FALL;
+		explode flare2 type FIRE | SMOKE | FALL;
+		explode turret2 type FIRE | SMOKE | FALL;
+		explode flare3 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode column type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode top type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret1 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode barrel type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare1 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turret2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare3 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode column type EXPLODE_ON_HIT | FIRE | FALL;
+		explode top type SHATTER;
+		explode turret1 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode barrel type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare1 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode turret2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare3 type EXPLODE_ON_HIT | FIRE | FALL;
 	return corpsetype;
 }

@@ -1,163 +1,161 @@
+#define TA			// This is a TA script
 
-#include "../recoil_common_includes.h"
+#include "sfxtype.h"
+#include "exptype.h"
 
 piece  base, flare, turret, sensor, sleeve;
 
 static-var  restore_delay;
-static-var  out_of_arc_count;
 
 // Signal definitions
-#define SIGNAL_MOVE 1
-#define SIGNAL_AIM1 256
+#define SIG_AIM				2
 
 
-#define BASEPIECE base
-#define HITSPEED <35.0>
-//how 'heavy' the unit is, on a scale of 1-10
-#define UNITSIZE 6
-#define MAXTILT 100
-#define RECOIL_POWER 100000
-#include "../unit_hitbyweaponid_and_smoke.h"
-
-#define TB_BASE base 
-#define TB_TURNRATE <8.0> 
-#define TB_TILT_X <0.20>
-#define TB_BANK_Z <0.20> // Do not define this if you dont want banking
-#include "../tilt_bank_mobileunit.h"
-
-
-
-Create()
+SmokeUnit(healthpercent, sleeptime, smoketype)
 {
-	hide flare;
-	restore_delay = 3000;
-	out_of_arc_count = 0;
-	call-script TB_Init();
-}
-StartMoving(reversing)
-{
-	signal SIGNAL_MOVE;
-	set-signal-mask SIGNAL_MOVE;
-	START_TILTBANK;
-}
-
-StopMoving()
-{
-	signal SIGNAL_MOVE;
-	STOP_TILTBANK;
-}
-
-
-SetMaxReloadTime(reloadMS)
-{
-	restore_delay = reloadMS * 4;
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 400;
+	}
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 256 | 2;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 256 | 1;
+			}
+			emit-sfx smoketype from base;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
 	return (0);
 }
 
-static-var  Stunned;
-ExecuteRestoreAfterDelay()
+
+HitByWeapon(anglex, anglez)
 {
-    if (Stunned) {
-        return (1);
-    }
-	turn turret to y-axis <0.0> speed <50.010989>;
-	turn sleeve to x-axis <0.0> speed <50.010989>;
+	turn base to z-axis anglez speed <65.000000>;
+	turn base to x-axis <0> - anglex speed <65.000000>;
+	wait-for-turn base around z-axis;
+	wait-for-turn base around x-axis;
+	turn base to z-axis <0.000000> speed <20.000000>;
+	turn base to x-axis <0.000000> speed <20.000000>;
 }
-SetStunned(State)
+
+RockUnit(anglex, anglez)
 {
-    Stunned = State;
-	if (!Stunned) {
-	    start-script ExecuteRestoreAfterDelay();
-	}
+	turn base to x-axis anglex speed <50.010989>;
+	turn base to z-axis <0> - anglez speed <50.010989>;
+	wait-for-turn base around z-axis;
+	wait-for-turn base around x-axis;
+	turn base to z-axis <0.000000> speed <20.000000>;
+	turn base to x-axis <0.000000> speed <20.000000>;
+	return (0);
 }
+
+Create()
+{
+
+	restore_delay = 3000;
+	start-script SmokeUnit();
+	return (0);
+}
+
+SetMaxReloadTime(Func_Var_1)
+{
+	restore_delay = Func_Var_1 * 4;
+	return (0);
+}
+
 RestoreAfterDelay()
 {
 	sleep restore_delay;
-	start-script ExecuteRestoreAfterDelay();
+	turn turret to y-axis <0.000000> speed <10.000000>;
+	turn sleeve to x-axis <0.000000> speed <4.000000>;
+	return (0);
 }
 
-AimWeapon1(heading, pitch)
+AimPrimary(heading, pitch)
 {
-	signal SIGNAL_AIM1;
-	set-signal-mask SIGNAL_AIM1;
-
-	// out of firing arc aim calls happen during "preaiming" logic
-	// logic to reset gun to neutral if the target heading has been
-	// out of firing arc for ~3 seconds
-	if ( (heading < -16384) OR (heading > 16384) )
-	{
-		// assume reaim time is every 15 frames, 0.5 seconds
-		out_of_arc_count = out_of_arc_count + 1;
-		// after 6 aim checks, if target is still out of arc, restore gun to neutral
-		if (out_of_arc_count > 6)
-		{
-			start-script ExecuteRestoreAfterDelay();
-		}
-		return (0);
-	}
-	out_of_arc_count = 0;
-
+	signal SIG_AIM;
+	set-signal-mask SIG_AIM;
 	turn turret to y-axis heading speed <50.010989>;
-	turn sleeve to x-axis <0.0> - pitch speed <50.010989>;
+	turn sleeve to x-axis <0.000000> - pitch speed <50.010989>;
 	wait-for-turn turret around y-axis;
 	wait-for-turn sleeve around x-axis;
 	start-script RestoreAfterDelay();
 	return (1);
 }
 
-FireWeapon1()
+FirePrimary()
 {
 	sleep 150;
 	return (0);
 }
 
-QueryWeapon1(pieceIndex)
+QueryPrimary(piecenum)
 {
-	pieceIndex = flare;
+	piecenum = flare;
 	return (0);
 }
 
-AimFromWeapon1(pieceIndex)
+AimFromPrimary(piecenum)
 {
-	pieceIndex = sleeve;
+	piecenum = sleeve;
 	return (0);
 }
 
-
+SweetSpot(piecenum)
+{
+	piecenum = base;
+	return (0);
+}
 
 Killed(severity, corpsetype)
 {
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode turret type BITMAPONLY | NOHEATCLOUD;
-		explode sleeve type BITMAPONLY | NOHEATCLOUD;
-		explode sensor type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type BITMAPONLY;
+		explode sleeve type BITMAPONLY;
+		explode flare type BITMAPONLY;
+		explode sensor type FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode turret type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode sleeve type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode sensor type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type FIRE | SMOKE | FALL;
+		explode sleeve type FIRE | SMOKE | FALL;
+		explode flare type FIRE | SMOKE | FALL;
+		explode sensor type FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode turret type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode sleeve type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode sensor type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type FIRE | SMOKE | FALL;
+		explode sleeve type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode flare type SMOKE | FALL;
+		explode sensor type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode turret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode sleeve type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode sensor type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode sleeve type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare type EXPLODE_ON_HIT | FIRE | FALL;
+		explode sensor type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 	return corpsetype;
 }

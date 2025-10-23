@@ -6,36 +6,13 @@
 piece  base, flarer1, flarer2, body1, body2, turretg, boreg, barrelg, flareg, neck,
  turretb, boreb, barrelb, flareb, turretr, borer, barrelr, aimpoint;
 
-static-var  closed, gun_3, restore_delay, Static_Var_3, statechg_DesiredState, statechg_StateChanging;
+static-var  gun_3, restore_delay, Static_Var_3, statechg_DesiredState, statechg_StateChanging;
 
 // Signal definitions
 #define SIG_AIM				2
 #define SIG_AIM_2			4
 #define SIG_AIM_3			8
 
-
-//-------------------------------CONSTANT ACCELERATION TURRET TURNING---------------------------
-// MaxVelocity and acceleration are in degrees per frame (not second!)
-// Jerk is the minimum velocity of the turret
-// A high precision requirement can result in overshoots if desired 
-// (c) CC BY NC ND Beherith mysterme@gmail.com
-#define MAX_AIMY1_VELOCITY <3.00>
-#define AIMY1_ACCELERATION <0.16>
-#define AIMY1_JERK <0.5>
-#define AIMY1_PRECISION <1.2>
-#define AIMY1_RESTORE_SPEED <1.0>
-
-static-var timetozero, deceleratethreshold;
-static-var Stunned;
-
-static-var aimy1delta, aimy1velocity, aimy1target, aimy1position, gameFrame1;
-
-#define MAX_AIMY2_VELOCITY <6.00>
-#define AIMY2_ACCELERATION <0.4>
-#define AIMY2_JERK <1.2>
-#define AIMY2_PRECISION <1.2>
-#define AIMY2_RESTORE_SPEED <1.0>
-static-var aimy2delta, aimy2velocity, aimy2target, aimy2position, gameFrame2;
 
 activatescr()
 {
@@ -69,21 +46,17 @@ activatescr()
 		wait-for-turn turretg around x-axis;
 	}
 	sleep 22;
-	closed = FALSE;
 }
 
 deactivatescr()
 {
-	closed = TRUE;
 	if( TRUE )
 	{
 		turn turretb to x-axis <0> speed <180>;
 		turn turretg to x-axis <0> speed <180>;
 		turn turretr to y-axis <0> speed <180>;	
 		turn body1 to y-axis <0> speed <180>;	
-		aimy1position = 0;
 		turn body2 to y-axis <0> speed <180>;	
-		aimy2position = 0;
 		wait-for-turn turretb around x-axis;
 		wait-for-turn turretg around x-axis;
 		wait-for-turn turretr around x-axis;
@@ -123,6 +96,32 @@ deactivatescr()
 	sleep 22;
 }
 
+SmokeUnit(healthpercent, sleeptime, smoketype)
+{
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 400;
+	}
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 256 | 2;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 256 | 1;
+			}
+			emit-sfx smoketype from base;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
+}
 
 Go()
 {
@@ -177,17 +176,8 @@ RequestState(requestedstate, currentstate)
 
 Create()
 {
-	hide flareb;
-	hide flareg;
-	hide aimpoint;
-	hide flarer2;
-	hide flarer1;
-    hide flarer1;
-    hide flarer2;
-    hide flareb;
-    hide flareg;
-	gun_3 = 0;
-	closed = FALSE;
+
+	gun_3 = flareb;
 	call-script InitState();
 	Static_Var_3 = 0;
 	restore_delay = 2000;
@@ -195,11 +185,9 @@ Create()
 	{
 		sleep 250;
 	}
+	start-script SmokeUnit();
 	start-script RequestState(0);
 }
-
-#define SMOKEPIECE base
-#include "smokeunit_thread_nohit.h"
 
 Activate()
 {
@@ -219,129 +207,6 @@ SetMaxReloadTime(Func_Var_1)
 	restore_delay = Func_Var_1 * 4;
 }
 
-AimWeapon1(heading, pitch)
-{
-	if (closed == TRUE)
-	{
-		return (0);
-	}	
-	signal SIG_AIM;
-	set-signal-mask SIG_AIM;
-	//We can do this any time
-	turn turretb to x-axis <0.000000> - pitch speed <85.000000>;
-	
-	aimy1target = heading;
-	aimy1delta = aimy1target - aimy1position;
-
-	
-	while( ( get ABS(aimy1delta) > AIMY1_PRECISION ) OR (get ABS(aimy1velocity) > AIMY1_JERK)){
-		if (gameFrame1 != get(GAME_FRAME)){ //this is to make sure we dont get double-called, as previous aimweapon thread runs before new aimweaponthread can signal-kill previous one 
-			gameFrame1 = get(GAME_FRAME);
-	
-			//Clamp aimy1position and aimy1delta between <-180>;<180>
-			while (aimy1position >  <180>) aimy1position = aimy1position - <360>;
-			while (aimy1position < <-180>) aimy1position = aimy1position + <360>;
-			while (aimy1delta >  <180>) aimy1delta = aimy1delta - <360>;
-			while (aimy1delta < <-180>) aimy1delta = aimy1delta + <360>;
-		
-			//number of frames required to decelerate to 0
-			timetozero = get ABS(aimy1velocity) / AIMY1_ACCELERATION;
-			
-			//distance from target where we should start decelerating, always 'positive'
-			//pos = t * v - (t*(t-1)*a/2)
-			deceleratethreshold = timetozero * (get ABS(aimy1velocity)) - (timetozero * (timetozero - 1) * AIMY1_ACCELERATION / 2); 
-			
-			//get PRINT ( aimy1delta , deceleratethreshold, aimy1velocity, timetozero );
-			
-			if (get ABS(aimy1delta) <= deceleratethreshold){ //we need to decelerate
-				if (aimy1velocity > 0) aimy1velocity = aimy1velocity - AIMY1_ACCELERATION;
-				else 				   aimy1velocity = aimy1velocity + AIMY1_ACCELERATION;
-			}	
-			else //we need to accelerate
-			{
-				if (aimy1delta > 0) aimy1velocity = get MIN(       MAX_AIMY1_VELOCITY, aimy1velocity + AIMY1_ACCELERATION); 
-				else                aimy1velocity = get MAX((-1) * MAX_AIMY1_VELOCITY, aimy1velocity - AIMY1_ACCELERATION);
-			}
-			
-			//Apply jerk at very low velocities
-			if (get ABS(aimy1velocity) < AIMY1_JERK){
-				if ((aimy1delta >        AIMY1_JERK)) aimy1velocity =        AIMY1_JERK;
-				if ((aimy1delta < (-1) * AIMY1_JERK)) aimy1velocity = (-1) * AIMY1_JERK;
-			}
-			
-			aimy1position = aimy1position + aimy1velocity; 
-			turn body2 to y-axis aimy1position now;
-			aimy1delta = aimy1target - aimy1position ; 	
-		}
-		sleep 30;		
-	}
-	aimy1velocity = 0;
-	return (1);
-}
-
-
-AimWeapon2(heading, pitch)
-{
-	if (closed == TRUE)
-	{
-		return (0);
-	}	
-	signal SIG_AIM_2;
-	set-signal-mask SIG_AIM_2;
-	//We can do this any time
-	turn turretg to x-axis <0.000000> - pitch speed <85.000000>;
-	
-	aimy2target = heading;
-	aimy2delta = aimy2target - aimy2position;
-
-	
-	while( ( get ABS(aimy2delta) > AIMY2_PRECISION ) OR (get ABS(aimy2velocity) > AIMY2_JERK)){
-		if (gameFrame2 != get(GAME_FRAME)){ //this is to make sure we dont get double-called, as previous aimweapon thread runs before new aimweaponthread can signal-kill previous one 
-			gameFrame2 = get(GAME_FRAME);
-	
-			//Clamp aimy2position and aimy2delta between <-180>;<180>
-			while (aimy2position >  <180>) aimy2position = aimy2position - <360>;
-			while (aimy2position < <-180>) aimy2position = aimy2position + <360>;
-			while (aimy2delta >  <180>) aimy2delta = aimy2delta - <360>;
-			while (aimy2delta < <-180>) aimy2delta = aimy2delta + <360>;
-		
-			//number of frames required to decelerate to 0
-			timetozero = get ABS(aimy2velocity) / AIMY2_ACCELERATION;
-			
-			//distance from target where we should start decelerating, always 'positive'
-			//pos = t * v - (t*(t-1)*a/2)
-			deceleratethreshold = timetozero * (get ABS(aimy2velocity)) - (timetozero * (timetozero - 1) * AIMY2_ACCELERATION / 2); 
-			
-			//get PRINT ( aimy2delta , deceleratethreshold, aimy2velocity, timetozero );
-			
-			if (get ABS(aimy2delta) <= deceleratethreshold){ //we need to decelerate
-				if (aimy2velocity > 0) aimy2velocity = aimy2velocity - AIMY2_ACCELERATION;
-				else 				   aimy2velocity = aimy2velocity + AIMY2_ACCELERATION;
-			}	
-			else //we need to accelerate
-			{
-				if (aimy2delta > 0) aimy2velocity = get MIN(       MAX_AIMY2_VELOCITY, aimy2velocity + AIMY2_ACCELERATION); 
-				else                aimy2velocity = get MAX((-1) * MAX_AIMY2_VELOCITY, aimy2velocity - AIMY2_ACCELERATION);
-			}
-			
-			//Apply jerk at very low velocities
-			if (get ABS(aimy2velocity) < AIMY2_JERK){
-				if ((aimy2delta >        AIMY2_JERK)) aimy2velocity =        AIMY2_JERK;
-				if ((aimy2delta < (-1) * AIMY2_JERK)) aimy2velocity = (-1) * AIMY2_JERK;
-			}
-			
-			aimy2position = aimy2position + aimy2velocity; 
-			turn body1 to y-axis aimy2position now;
-			aimy2delta = aimy2target - aimy2position ; 	
-		}
-		sleep 30;		
-	}
-	aimy2velocity = 0;
-	return (1);
-}
-
-
-/*
 AimPrimary(heading, pitch)
 {
 	signal SIG_AIM;
@@ -370,7 +235,7 @@ AimSecondary(heading, pitch)
 	wait-for-turn body1 around y-axis;
 	wait-for-turn turretg around x-axis;
 	return (1);
-}*/
+}
 
 AimTertiary(heading, pitch)
 {
@@ -398,15 +263,15 @@ FireSecondary()
 
 FireTertiary()
 {
-	if( gun_3 == 0 )
+	if( gun_3 == 1 )
 	{
-		gun_3 = 1;
+		gun_3 = flarer1;
 		return (0);
 	}
-	else
+	if( gun_3 != 1 )
 	{
 		
-	   	gun_3 = 0 ;
+		gun_3 = flarer2;
 		return (0);
 	}
 }
@@ -438,13 +303,15 @@ QuerySecondary(piecenum)
 
 QueryTertiary(piecenum)
 {
-	if( gun_3 == 0 )
+	if( gun_3 == 1 )
 	{
 		piecenum = flarer1;
+		//gun_3=2;
 	}
-	else
+	if( gun_3 ==2  )
 	{
 		piecenum = flarer2;
+		//gun_3=1;
 	}
 	
 }
@@ -459,84 +326,84 @@ Killed(severity, corpsetype)
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode body1 type BITMAPONLY | NOHEATCLOUD;
-		explode turretg type BITMAPONLY | NOHEATCLOUD;
-		explode boreg type BITMAPONLY | NOHEATCLOUD;
-		explode barrelg type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flareg type BITMAPONLY | NOHEATCLOUD;
-		explode neck type BITMAPONLY | NOHEATCLOUD;
-		explode turretr type BITMAPONLY | NOHEATCLOUD;
-		explode borer type BITMAPONLY | NOHEATCLOUD;
-		explode barrelr type BITMAPONLY | NOHEATCLOUD;
-		explode flarer1 type BITMAPONLY | NOHEATCLOUD;
-		explode flarer2 type BITMAPONLY | NOHEATCLOUD;
-		explode body2 type BITMAPONLY | NOHEATCLOUD;
-		explode turretb type BITMAPONLY | NOHEATCLOUD;
-		explode boreb type BITMAPONLY | NOHEATCLOUD;
-		explode barrelb type BITMAPONLY | NOHEATCLOUD;
-		explode flareb type BITMAPONLY | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode body1 type BITMAPONLY;
+		explode turretg type BITMAPONLY;
+		explode boreg type BITMAPONLY;
+		explode barrelg type FIRE | SMOKE | FALL;
+		explode flareg type BITMAPONLY;
+		explode neck type BITMAPONLY;
+		explode turretr type BITMAPONLY;
+		explode borer type BITMAPONLY;
+		explode barrelr type BITMAPONLY;
+		explode flarer1 type BITMAPONLY;
+		explode flarer2 type BITMAPONLY;
+		explode body2 type BITMAPONLY;
+		explode turretb type BITMAPONLY;
+		explode boreb type BITMAPONLY;
+		explode barrelb type BITMAPONLY;
+		explode flareb type BITMAPONLY;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode turretg type FALL | NOHEATCLOUD;
-		explode boreg type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelg type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flareg type FALL | NOHEATCLOUD;
-		explode neck type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turretr type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode borer type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelr type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flarer1 type FALL | NOHEATCLOUD;
-		explode flarer2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode turretb type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode boreb type FALL | NOHEATCLOUD;
-		explode barrelb type FALL | NOHEATCLOUD;
-		explode flareb type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turretg type FALL;
+		explode boreg type FIRE | SMOKE | FALL;
+		explode barrelg type FIRE | SMOKE | FALL;
+		explode flareg type FALL;
+		explode neck type FIRE | SMOKE | FALL;
+		explode turretr type FIRE | SMOKE | FALL;
+		explode borer type FIRE | SMOKE | FALL;
+		explode barrelr type FIRE | SMOKE | FALL;
+		explode flarer1 type FALL;
+		explode flarer2 type FIRE | SMOKE | FALL;
+		explode turretb type FIRE | SMOKE | FALL;
+		explode boreb type FALL;
+		explode barrelb type FALL;
+		explode flareb type FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode body1 type BITMAPONLY | NOHEATCLOUD;
-		explode turretg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode boreg type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelg type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flareg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode neck type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode turretr type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode borer type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelr type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flarer1 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flarer2 type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode body2 type BITMAPONLY | NOHEATCLOUD;
-		explode turretb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode boreb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelb type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flareb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode body1 type BITMAPONLY;
+		explode turretg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode boreg type FIRE | SMOKE | FALL;
+		explode barrelg type FIRE | SMOKE | FALL;
+		explode flareg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode neck type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode turretr type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode borer type FIRE | SMOKE | FALL;
+		explode barrelr type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flarer1 type FIRE | SMOKE | FALL;
+		explode flarer2 type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode body2 type BITMAPONLY;
+		explode turretb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode boreb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode barrelb type FIRE | SMOKE | FALL;
+		explode flareb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode body1 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode turretg type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode boreg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flareg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode neck type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode turretr type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode borer type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode barrelr type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flarer1 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode flarer2 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode body2 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode turretb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode boreb type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode barrelb type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode flareb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode body1 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode turretg type EXPLODE_ON_HIT | FIRE | FALL;
+		explode boreg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode barrelg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flareg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode neck type EXPLODE_ON_HIT | FIRE | FALL;
+		explode turretr type EXPLODE_ON_HIT | FIRE | FALL;
+		explode borer type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode barrelr type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flarer1 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode flarer2 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode body2 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode turretb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode boreb type EXPLODE_ON_HIT | FIRE | FALL;
+		explode barrelb type EXPLODE_ON_HIT | FIRE | FALL;
+		explode flareb type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 	return corpsetype;
 }

@@ -1,164 +1,74 @@
+#define TA			// This is a TA script
 
-#include "../recoil_common_includes.h"
+#include "sfxtype.h"
+#include "exptype.h"
 
 piece  base, lflare, lturret, wheels, mturret, mbarrel, mflare, emit_spark;
 
-static-var  restore_delay, isAiming;
+static-var  restore_delay, bAiming;
 
 // Signal definitions
-#define SIGNAL_AIM1 256
-#define SIGNAL_AIM3 1024
-#define SIGNAL_MOVE 1
-
-//#define DEBUG
-#include "../debug.h"
-
-#define TB_BASE base 
-#define TB_TURNRATE <30.0> 
-#define TB_TILT_X <0.1>
-#define TB_BANK_Z <0.18> // Do not define this if you dont want banking
-#include "../tilt_bank_mobileunit.h"
-
-// ================== STEERING CONTROL ==================
-/*
-#ifndef WRAPDELTA
-	#define WRAPDELTA(angle) (((angle + 98280) % 65520) - 32760)
-#endif
-
-#define VS_BASE base
-#define VS_TURNRATE <30>
-#define VS_TILT_X <0.1>
-#define VS_TILT_Z <0.03>
-#define VS_CANREVERSE 0
-#define VS_ACCURACY 1000
-#define VS_FRAMES 3
-
-static-var VS_prevHeading, VS_prevSpeed, VS_maxSpeed;
-
-#ifdef VS_TILT_Z
-	
-	static-var VS_prevHeading, VS_prevSpeed, VS_maxSpeed;
-
-	VS_Init(){
-		VS_maxSpeed = get MAX_SPEED;
-		VS_prevHeading = get HEADING;
-		VS_prevSpeed = 0;
-	}
-
-	#define START_VEHICLESTEERING 	VS_prevHeading = get HEADING; \
-	VS_prevSpeed = 0; \
-	start-script VehicleSteering(reversing);
-
-	#define STOP_VEHICLESTEERING 		VS_prevHeading = get HEADING;  \
-		VS_prevSpeed = 0; \
-		turn VS_BASE to z-axis <0> speed VS_TURNRATE; \
-		turn VS_BASE to x-axis <0> speed VS_TURNRATE; 
+#define SIG_AIM				2
+#define SIG_AIM_3			4
 
 
-#else
-	static-var VS_prevSpeed, VS_maxSpeed;
-
-	VS_Init(){
-		VS_maxSpeed = get MAX_SPEED;
-		VS_prevSpeed = 0;
-	}
-
-	#define START_VEHICLESTEERING 	VS_prevSpeed = 0; \
-		start-script VehicleSteering(reversing);
-
-	#define STOP_VEHICLESTEERING	VS_prevSpeed = 0; \
-		turn VS_BASE to x-axis <0> speed VS_TURNRATE; 
-#endif
-
-
-//static-var VS_currSpeed, VS_currHeading, deltaSpeed, deltaHeading;
-
-VehicleSteering(reversing)
+SmokeUnit(healthpercent, sleeptime, smoketype)
 {
-	// Could probably get away with half as many local vars...
-	var VS_currSpeed;
-	var deltaSpeed;
-
-	#ifdef VS_TILT_Z
-		var VS_currHeading;
-		var deltaHeading;
-	#endif
-	
-	while(1)
+	while( get BUILD_PERCENT_LEFT )
 	{
-		// get current
-		VS_currSpeed   = (get CURRENT_SPEED) * VS_ACCURACY / (VS_maxSpeed);
-		
-		#ifdef VS_TILT_Z
-			VS_currHeading = get HEADING;
-		#endif
-
-		// calc deltas
-		deltaSpeed   = (VS_currSpeed - VS_prevSpeed) / VS_FRAMES;
-		
-		// Less braking effect:
-		if (deltaSpeed < 0) deltaSpeed = deltaSpeed/2;
-
-		#ifdef VS_TILT_Z
-			// adjust heading with speed
-			deltaHeading = (WRAPDELTA(VS_currHeading - VS_prevHeading) ) / VS_FRAMES;
-			deltaHeading = deltaHeading * VS_currSpeed / VS_ACCURACY;
-		#endif
-		
-		#if VS_CANREVERSE == 1 
-			// Reversing isnt very reliable, but can be used here to flip directions
-			if (reversing){
-				deltaHeading = -1 * deltaHeading;
-				deltaSpeed   = -1 * deltaSpeed;
-			}
-		#endif
-
-		//dbg(deltaSpeed, deltaHeading, reversing);
-
-		turn VS_BASE to x-axis deltaSpeed   * (-1 * VS_TILT_X) speed VS_TURNRATE;
-		VS_prevSpeed = VS_currSpeed;
-		
-		#ifdef VS_TILT_Z
-			turn VS_BASE to z-axis deltaHeading * (-1 * VS_TILT_Z) speed VS_TURNRATE;
-			VS_prevHeading = VS_currHeading;
-		#endif
-		//move VS_BASE to y-axis ((tilt* tilt) * [0.005]) now;
-		 
-		
-		sleep (32 * VS_FRAMES);
+		sleep 400;
 	}
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 256 | 2;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 256 | 1;
+			}
+			emit-sfx smoketype from base;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
+	return (0);
+	// Build by COBBLER Ver4.0 Copyright @1998 DIGITAL CONCEPT SOFTWARE (MANU@inext.fr) / http://www.annihilationcenter.com/DCS/  
 }
 
-// ================== STEERING CONTROL ==================
-*/
-/*
 RockUnit(anglex, anglez)
 {
-	turn base to x-axis anglex speed <50.0>;
-	turn base to z-axis <0> - anglez speed <50.0>;
+	turn base to x-axis anglex speed <50.000000>;
+	turn base to z-axis <0> - anglez speed <50.000000>;
 	wait-for-turn base around z-axis;
 	wait-for-turn base around x-axis;
-	// Alternatively, 
-	turn base to z-axis <0.0> speed <20.0>;
-	turn base to x-axis <0.0> speed <20.0>;
+	turn base to z-axis <0.000000> speed <20.000000>;
+	turn base to x-axis <0.000000> speed <20.000000>;
 	return (0);
 }
-*/
 
 
-#define BASEPIECE base
-#define HITSPEED <55.0>
-//how 'heavy' the unit is, on a scale of 1-10
-#define UNITSIZE 4
-#define MAXTILT 100
-#define RECOIL_POWER 1000000
-#include "../unit_hitbyweaponid_and_smoke.h"
+HitByWeapon(anglex, anglez)
+{
+	turn base to z-axis anglez speed <65.000000>;
+	turn base to x-axis <0> - anglex speed <65.000000>;
+	wait-for-turn base around z-axis;
+	wait-for-turn base around x-axis;
+	turn base to z-axis <0.000000> speed <20.000000>;
+	turn base to x-axis <0.000000> speed <20.000000>;
+}
+
 
 Sparks()
 {
 	while( TRUE )
 	{
-		while( !isAiming )
+		while( !bAiming )
 		{
 			sleep 100;
 		}
@@ -170,175 +80,155 @@ Sparks()
 Create()
 {
 	restore_delay = 3000;
-	isAiming = FALSE;
-
-	call-script TB_Init();
-
+	bAiming = FALSE;
+	hide emit_spark;
+	start-script SmokeUnit();
 	start-script Sparks();
 	return (0);
 }
 
-StartMoving(reversing)
+StartMoving()
 {
-	signal SIGNAL_MOVE;
-	set-signal-mask SIGNAL_MOVE;
-
-	spin wheels around x-axis speed <140.0> accelerate <5.0>;
-
-	START_TILTBANK;
+	spin wheels around x-axis speed <140.000000> accelerate <5.000000>;
 }
 
 StopMoving()
 {
-	//dbg();
-	stop-spin wheels around x-axis decelerate <24.0>;
-	signal SIGNAL_MOVE;
-
-	STOP_TILTBANK;
+	stop-spin wheels around x-axis decelerate <24.000000>;
 }
 
-SetMaxReloadTime(reloadMS)
+SetMaxReloadTime(Func_Var_1)
 {
-	restore_delay = reloadMS * 2;
+	restore_delay = Func_Var_1 * 2;
 	return (0);
 }
 
-static-var  Stunned;
-ExecuteRestoreAfterDelay()
-{
-    if (Stunned) {
-        return (1);
-    }
-	set-signal-mask 0;
-	turn lturret to y-axis <0.0> speed <150.0>;
-	turn mturret to y-axis <0.0> speed <150.0>;
-	turn mbarrel to x-axis <0.0> speed <150.0>;
-	isAiming = FALSE;
-}
-SetStunned(State)
-{
-    Stunned = State;
-	if (!Stunned) {
-	    start-script ExecuteRestoreAfterDelay();
-	}
-}
 RestoreAfterDelay()
 {
 	sleep restore_delay;
-	start-script ExecuteRestoreAfterDelay();
+	set-signal-mask 0;
+	turn lturret to y-axis <0.000000> speed <150.000000>;
+	turn mturret to y-axis <0.000000> speed <150.000000>;
+	turn mbarrel to x-axis <0.000000> speed <150.000000>;
+	bAiming = FALSE;
+	return (0);
 }
 
-AimWeapon1(heading, pitch)
+AimPrimary(heading, pitch)
 {
-	signal SIGNAL_AIM1;
-	set-signal-mask SIGNAL_AIM1;
-	isAiming = TRUE;
-	turn lturret to y-axis heading speed <150.0>;
+	signal SIG_AIM;
+	set-signal-mask SIG_AIM;
+	bAiming = TRUE;
+	turn lturret to y-axis heading speed <150.000000>;
 	wait-for-turn lturret around y-axis;
 	start-script RestoreAfterDelay();
 	return (1);
 }
 
-AimWeapon2(heading, pitch)
+AimTertiary(heading, pitch)
 {
-	signal SIGNAL_AIM3;
-	set-signal-mask SIGNAL_AIM3;
-	turn mturret to y-axis heading speed <300.0>;
-	turn mbarrel to x-axis <0.0> - pitch speed <300.0>;
+	signal SIG_AIM_3;
+	set-signal-mask SIG_AIM_3;
+	turn mturret to y-axis heading speed <300.000000>;
+	turn mbarrel to x-axis <0.000000> - pitch speed <300.000000>;
 	wait-for-turn mturret around y-axis;
 	wait-for-turn mbarrel around x-axis;
 	start-script RestoreAfterDelay();
 	return (1);
 }
 
-FireWeapon1()
+FirePrimary()
 {
 	emit-sfx 1024+0 from lflare;
 	sleep 100;
 	return (0);
 }
 
-FireWeapon2()
+FireTertiary()
 {
 	sleep 100;
 	return (0);
 }
 
-AimFromWeapon1(pieceIndex)
+AimFromPrimary(piecenum)
 {
-	pieceIndex = emit_spark;
+	piecenum = lturret;
 	return (0);
 }
 
-AimFromWeapon2(pieceIndex)
+AimFromTertiary(piecenum)
 {
-	pieceIndex = mbarrel;
+	piecenum = mbarrel;
 	return (0);
 }
 
-QueryWeapon1(pieceIndex)
+QueryPrimary(piecenum)
 {
-	pieceIndex = lflare;
+	piecenum = lflare;
 	return (0);
 }
 
-QueryWeapon2(pieceIndex)
+QueryTertiary(piecenum)
 {
-	pieceIndex = mflare;
+	piecenum = mflare;
 	return (0);
 }
 
-
+SweetSpot(piecenum)
+{
+	piecenum = base;
+	return (0);
+}
 
 Killed(severity, corpsetype)
 {
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode mturret type BITMAPONLY | NOHEATCLOUD;
-		explode mbarrel type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		
-		
-		
-		
-		
+		explode base type BITMAPONLY;
+		explode mturret type BITMAPONLY;
+		explode mbarrel type FIRE | SMOKE | FALL;
+		explode mflare type BITMAPONLY;
+		explode wheels type BITMAPONLY;
+		explode lturret type BITMAPONLY;
+		explode lflare type BITMAPONLY;
+		explode emit_spark type BITMAPONLY;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode mturret type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode mbarrel type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		
-		explode wheels type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		
-		
-		
+		explode base type BITMAPONLY;
+		explode mturret type FIRE | SMOKE | FALL;
+		explode mbarrel type FIRE | SMOKE | FALL;
+		explode mflare type FALL;
+		explode wheels type FIRE | SMOKE | FALL;
+		explode lturret type FIRE | SMOKE | FALL;
+		explode lflare type FALL;
+		explode emit_spark type FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode base type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode mturret type SMOKE | FALL | NOHEATCLOUD;
-		explode mbarrel type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		
-		explode wheels type SMOKE | FALL | NOHEATCLOUD;
-		
-		
-		
+		explode base type FIRE | SMOKE | FALL;
+		explode mturret type SMOKE | FALL;
+		explode mbarrel type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode mflare type SMOKE | FALL;
+		explode wheels type SMOKE | FALL;
+		explode lturret type FIRE | SMOKE | FALL;
+		explode lflare type FIRE | SMOKE | FALL;
+		explode emit_spark type SMOKE | FALL;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode base type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode mturret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode mbarrel type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		
-		explode wheels type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		
-		
-		
+		explode base type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode mturret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode mbarrel type EXPLODE_ON_HIT | FIRE | FALL;
+		explode mflare type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode wheels type EXPLODE_ON_HIT | FIRE | FALL;
+		explode lturret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode lflare type EXPLODE_ON_HIT | FIRE | FALL;
+		explode emit_spark type EXPLODE_ON_HIT | FIRE | FALL;
 	return corpsetype;
 }

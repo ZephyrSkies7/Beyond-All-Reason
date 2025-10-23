@@ -1,156 +1,272 @@
+#define TA			// This is a TA script
 
-#include "../recoil_common_includes.h"	
-#include "../factories_common.h"
+#include "sfxtype.h"
+#include "exptype.h"
 
-piece  pad,base,door1,door2,crane1,crane2,turret1,turret2,nano1,nano2,cagelight,cagelight_emit;
+piece  base, pad, nano1,nano2,nano3, door1,door2,crane1,crane2;
 
-static-var  spray;
+static-var  spray, unitviewer, statechg_DesiredState, statechg_StateChanging;
 
 // Signal definitions
-#define SIGNAL_BUILD 2
-#define SIGNAL_TURNON 4
+#define SIG_ACTIVATE			2
 
+
+
+activatescr()
+{
+	if( TRUE )
+	{
+		turn door1 to z-axis <0.000000> now;
+		turn door1 to z-axis <-90> speed <90>;
+		turn door2 to z-axis <0.000000> now;
+		turn door2 to z-axis <90> speed <90>;
+		wait-for-turn door1 around z-axis;
+	}
+	if( TRUE )
+	{
+		move crane1 to x-axis [0] now;
+		move crane1 to x-axis [9] speed [18];
+		move crane2 to x-axis [0] now;
+		move crane2 to x-axis [-9] speed [18];
+		wait-for-move crane2 along x-axis;
+	}
+	sleep 29;
+}
+
+deactivatescr()
+{
+	if( TRUE )
+	{
+		move crane1 to x-axis [0] speed [18];
+		move crane2 to x-axis [0] speed [18];
+		wait-for-move crane2 along x-axis;
+	}
+	if( TRUE )
+	{
+		turn door1 to z-axis <0.000000> speed <90>;
+		turn door2 to z-axis <0.000000> speed <90>;
+		wait-for-turn door1 around z-axis;
+	}
+
+	sleep 29;
+}
+
+SmokeUnit(healthpercent, sleeptime, smoketype)
+{
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 400;
+	}
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 256 | 2;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 256 | 1;
+			}
+			emit-sfx smoketype from base;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
+}
+
+OpenYard()
+{
+	set YARD_OPEN to 1;
+	while( !get YARD_OPEN )
+	{
+		set BUGGER_OFF to 1;
+		sleep 1500;
+		set YARD_OPEN to 1;
+	}
+	set BUGGER_OFF to 0;
+}
+
+CloseYard()
+{
+	set YARD_OPEN to 0;
+	while( get YARD_OPEN )
+	{
+		set BUGGER_OFF to 1;
+		sleep 1500;
+		set YARD_OPEN to 0;
+	}
+	set BUGGER_OFF to 0;
+}
+
+Go()
+{
+
+	call-script activatescr();
+	call-script OpenYard();
+	set INBUILDSTANCE to 1;
+}
+
+Stop()
+{
+	set INBUILDSTANCE to 0;
+	call-script CloseYard();
+	call-script deactivatescr();
+
+}
+
+InitState()
+{
+	statechg_DesiredState = TRUE;
+	statechg_StateChanging = FALSE;
+}
+
+RequestState(requestedstate, currentstate)
+{
+	if( statechg_StateChanging )
+	{
+		statechg_DesiredState = requestedstate;
+		return (0);
+	}
+	statechg_StateChanging = TRUE;
+	currentstate = statechg_DesiredState;
+	statechg_DesiredState = requestedstate;
+	while( statechg_DesiredState != currentstate )
+	{
+		if( statechg_DesiredState == 0 )
+		{
+			call-script Go();
+			currentstate = 0;
+		}
+		if( statechg_DesiredState == 1 )
+		{
+			call-script Stop();
+			currentstate = 1;
+		}
+	}
+	statechg_StateChanging = FALSE;
+}
 
 Create()
 {
-	hide nano2;
-	hide nano1;
-	hide pad;
-	hide cagelight_emit;
-	spray = 0;
+
+	unitviewer = FALSE;
+	spray = base;
+	call-script InitState();
+	start-script SmokeUnit();
 }
 
-#define BASEPIECE base
-#define MAXTILT 0
-#include "../unit_hitbyweaponid_and_smoke.h"
-
-QueryNanoPiece(pieceIndex)
+QueryNanoPiece(piecenum)
 {
-	spray = (spray + 1) % 2;
-	pieceIndex = nano1 + spray;
+	if( spray == 0 )
+	{
+		piecenum = nano1;
+	}
+	if( spray == 1 )
+	{
+		piecenum = nano2;
+	}
+	if( spray == 2 )
+	{
+		piecenum = nano3;
+	}
+	spray = spray +1;
+	if (spray>2)
+	{
+		spray=0;
+	}
+}
+
+Demo()
+{
+	unitviewer = TRUE;
 }
 
 Activate()
 {
-	signal SIGNAL_TURNON;
-	set-signal-mask SIGNAL_TURNON;
-	
-	move door1 to x-axis [-17.0] speed [17];
-	move door2 to x-axis [17.0] speed [17];
-	wait-for-move door2 along x-axis;
-	
-	move crane1 to x-axis [21.0] speed [42];
-	move crane2 to x-axis [21.0] speed [42];
-	wait-for-move crane1 along x-axis;
-	FACTORY_OPEN_BUILD;
+	signal SIG_ACTIVATE;
+	start-script RequestState(0);
 }
 
 Deactivate()
 {
-	signal SIGNAL_TURNON;
-	set-signal-mask SIGNAL_TURNON;
-	sleep 5000;
-	
-	move crane1 to x-axis [0] speed [42];
-	move crane2 to x-axis [0] speed [42];
-	wait-for-move crane1 along x-axis;
-	
-	move door1 to x-axis [0.0] speed [17];
-	move door2 to x-axis [0.0] speed [17];
-	wait-for-move door2 along x-axis;
-	
-	FACTORY_CLOSE_BUILD;
-}
-
-MoveCranes(){
-	while(TRUE){
-		move crane1 to x-axis [40] speed [10];
-		move crane2 to x-axis [2] speed [10];
-		wait-for-move crane1 along x-axis;
-		wait-for-move crane2 along x-axis;
-		move crane1 to x-axis [2] speed [10];
-		move crane2 to x-axis [40] speed [10];
-		wait-for-move crane1 along x-axis;
+	signal SIG_ACTIVATE;
+	set-signal-mask SIG_ACTIVATE;
+	if( !unitviewer )
+	{
+		sleep 5000;
 	}
+	set-signal-mask 0;
+	start-script RequestState(1);
 }
 
 
-StartBuilding()
+QueryBuildInfo(piecenum)
 {
-	show nano2;
-	show nano1;
-	show cagelight_emit;
-	spin cagelight around y-axis speed <200> accelerate <1>;
-	signal SIGNAL_BUILD;
-	set-signal-mask SIGNAL_BUILD;
-	start-script MoveCranes();
+	piecenum = pad;
 }
 
-StopBuilding()
+SweetSpot(piecenum)
 {
-	hide nano2;
-	hide nano1;
-	hide cagelight_emit;
-	stop-spin cagelight around y-axis decelerate <1>;
-	signal SIGNAL_BUILD;
+	piecenum = base;
 }
-
-QueryBuildInfo(pieceIndex)
-{
-	pieceIndex = pad;
-}
-
-
 
 Killed(severity, corpsetype)
 {
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode crane1 type BITMAPONLY | NOHEATCLOUD;
-		explode crane2 type BITMAPONLY | NOHEATCLOUD;
-		explode nano1 type BITMAPONLY | NOHEATCLOUD;
-		explode nano2 type BITMAPONLY | NOHEATCLOUD;
-		explode door1 type BITMAPONLY | NOHEATCLOUD;
-		explode door2 type BITMAPONLY | NOHEATCLOUD;
-		explode pad type BITMAPONLY | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode door2 type FIRE | SMOKE | FALL;
+		explode crane2 type BITMAPONLY;
+		explode door1 type BITMAPONLY;
+		explode crane1 type BITMAPONLY;
+		explode nano1 type BITMAPONLY;
+		explode nano2 type BITMAPONLY;
+		explode nano3 type BITMAPONLY;
+		explode pad type BITMAPONLY;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode crane1 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode crane2 type FALL | NOHEATCLOUD;
-		explode nano1 type FALL | NOHEATCLOUD;
-		explode nano2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode door1 type FALL | NOHEATCLOUD;
-		explode door2 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode pad type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode door2 type FALL;
+		explode crane2 type FIRE | SMOKE | FALL;
+		explode door1 type FALL;
+		explode crane1 type FIRE | SMOKE | FALL;
+		explode nano1 type FIRE | SMOKE | FALL;
+		explode nano2 type FIRE | SMOKE | FALL;
+		explode nano3 type FIRE | SMOKE | FALL;
+		explode pad type FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode crane1 type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode crane2 type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode nano1 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode nano2 type EXPLODE_ON_HIT | SMOKE | FALL | NOHEATCLOUD;
-		explode door1 type FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode door2 type SMOKE | FALL | NOHEATCLOUD;
-		explode pad type FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode door2 type SMOKE | FALL;
+		explode crane2 type FIRE | SMOKE | FALL;
+		explode door1 type FIRE | SMOKE | FALL;
+		explode crane1 type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode nano1 type FIRE | SMOKE | FALL;
+		explode nano2 type FIRE | SMOKE | FALL;
+		explode nano3 type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode pad type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode base type BITMAPONLY | NOHEATCLOUD;
-		explode crane1 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode crane2 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode nano1 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode nano2 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode door1 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode door2 type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
-		explode pad type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode door2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode crane2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode door1 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode crane1 type EXPLODE_ON_HIT | FIRE | FALL;
+		explode nano1 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode nano2 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode nano3 type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode pad type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
 	return corpsetype;
 }

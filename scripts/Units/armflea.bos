@@ -1,216 +1,349 @@
+#define TA			// This is a TA script
 
-#include "../recoil_common_includes.h"
+#include "sfxtype.h"
+#include "exptype.h"
 
-piece  base, turret, flare, rrleg, rfleg, lrleg, lfleg, aimy1;
+piece  base, turret, flare, lfupleg, lrupleg, rrupleg,
+       rfupleg, rrleg, rfleg, lrleg, lfleg;
 
-static-var  isMoving, isAiming, restore_delay, wpn1_lasthead;
-#define SIGNAL_AIM1 256
+static-var  bMoving, bAiming, Static_Var_3, restore_delay;
 
 // Signal definitions
-// Generated for N:\animations\armflea_anim_walk.blend
-// Using https://github.com/Beherith/Skeletor_S3O 
-// this animation uses the static-var animFramesPerKeyframe which contains how many frames each keyframe takes
-static-var animSpeed, maxSpeed, animFramesPerKeyframe;
-#define SIGNAL_MOVE 1
+#define SIG_AIM				2
 
 
-Walk() {//Created by https://github.com/Beherith/Skeletor_S3O from N:\animations\armflea_anim_walk.blend 
-	// Author Beherith mysterme@gmail.com. License: GNU GPL v2.
-	set-signal-mask SIGNAL_MOVE;
-	if (isMoving) { //Frame:4
-			turn lfleg to y-axis <66.599993> speed <1997.999789> / animSpeed; //delta=66.60 
-			turn lrleg to x-axis <1.400000> speed <41.999996> / animSpeed; //delta=-1.40 
-			turn lrleg to z-axis <0.400000> speed <11.999999> / animSpeed; //delta=-0.40 
-			turn lrleg to y-axis <-42.599996> speed <1277.999872> / animSpeed; //delta=-42.60 
-			turn rfleg to y-axis <-66.599993> speed <1997.999789> / animSpeed; //delta=-66.60 
-			turn rrleg to x-axis <1.400000> speed <41.999996> / animSpeed; //delta=-1.40 
-			turn rrleg to z-axis <-0.400000> speed <11.999999> / animSpeed; //delta=0.40 
-			turn rrleg to y-axis <42.599996> speed <1277.999872> / animSpeed; //delta=42.60 
-		sleep ((33*animSpeed) -1);
+walk()
+{
+	if( bMoving )
+	{
+		move lfupleg to y-axis [0.000000] now;
+		move lfupleg to y-axis [0.250000] speed [2.000000];
+		move lrupleg to y-axis [0.000000] now;
+		move lrupleg to y-axis [0.900000] speed [8.000000];
+		move rrupleg to y-axis [0.000000] now;
+		move rrupleg to y-axis [0.800000] speed [7.000000];
+		turn base to x-axis <11.829670> now;
+		turn base to x-axis <22.000000> speed <94.000000>;
+		move base to y-axis [2] speed [20];
+		turn lfupleg to x-axis <-50.208791> now;
+		turn lfupleg to x-axis <-22.000000> speed <254.000000>;
+		turn lrupleg to x-axis <23.203297> now;
+		turn lrupleg to x-axis <-28.005495> speed <473.000000>;
+		turn rfupleg to x-axis <-49.269231> now;
+		turn rfupleg to x-axis <-32.005495> speed <150.000000>;
+		turn rrupleg to x-axis <27.472527> now;
+		turn rrupleg to x-axis <-20.000000> speed <439.000000>;
+		turn rrleg to x-axis <45.010989> now;
+		turn rrleg to x-axis <-24.005495> speed <633.000000>;
+		turn rfleg to x-axis <0.000000> now;
+		turn rfleg to x-axis <12.000000> speed <111.000000>;
+		turn lrleg to x-axis <44.527473> now;
+		turn lrleg to x-axis <-9.000000> speed <495.000000>;
+		sleep 110;
 	}
-	while(isMoving) {
-		if (isMoving) { //Frame:8
-			move base to y-axis [1.465000] speed [43.949997] / animSpeed; //delta=1.46 
-			turn base to x-axis <-14.099999> speed <422.999976> / animSpeed; //delta=14.10 
-			turn lfleg to y-axis <35.933328> speed <919.999946> / animSpeed; //delta=-30.67 
-			turn lrleg to x-axis <8.300000> speed <206.999997> / animSpeed; //delta=-6.90 
-			turn lrleg to z-axis <9.899996> speed <284.999891> / animSpeed; //delta=-9.50 
-			turn lrleg to y-axis <63.099992> speed <3170.999641> / animSpeed; //delta=105.70 
-			turn rfleg to y-axis <-35.933328> speed <919.999946> / animSpeed; //delta=30.67 
-			turn rrleg to x-axis <8.300000> speed <206.999997> / animSpeed; //delta=-6.90 
-			turn rrleg to z-axis <-9.899996> speed <284.999891> / animSpeed; //delta=9.50 
-			turn rrleg to y-axis <-63.099992> speed <3170.999641> / animSpeed; //delta=-105.70 
-			turn turret to x-axis <22.299997> speed <668.999920> / animSpeed; //delta=-22.30 
-		sleep ((33*animSpeed) -1);
-		}
-		if (isMoving) { //Frame:12
-			move base to y-axis [2.930000] speed [43.949997] / animSpeed; //delta=1.46 
-			turn base to x-axis <-0.200000> speed <416.999979> / animSpeed; //delta=-13.90 
-			turn lfleg to y-axis <5.266663> speed <919.999946> / animSpeed; //delta=-30.67 
-			turn lrleg to x-axis <6.0> speed <69.0> / animSpeed; //delta=2.30 
-			turn lrleg to z-axis <6.733333> speed <94.999906> / animSpeed; //delta=3.17 
-			turn lrleg to y-axis <27.866663> speed <1056.999880> / animSpeed; //delta=-35.23 
-			turn rfleg to y-axis <-5.266663> speed <919.999946> / animSpeed; //delta=30.67 
-			turn rrleg to x-axis <6.0> speed <69.0> / animSpeed; //delta=2.30 
-			turn rrleg to z-axis <-6.733333> speed <94.999906> / animSpeed; //delta=-3.17 
-			turn rrleg to y-axis <-27.866663> speed <1056.999880> / animSpeed; //delta=35.23 
-			turn turret to x-axis <12.900000> speed <281.999924> / animSpeed; //delta=9.40 
-		sleep ((33*animSpeed) -1);
-		}
-		if (isMoving) { //Frame:16
-			move base to y-axis [1.350000] speed [47.399994] / animSpeed; //delta=-1.58 
-			turn base to x-axis <13.299999> speed <404.999960> / animSpeed; //delta=-13.50 
-			turn lfleg to y-axis <-25.399996> speed <919.999792> / animSpeed; //delta=-30.67 
-			turn lrleg to x-axis <3.700001> speed <68.999963> / animSpeed; //delta=2.30 
-			turn lrleg to z-axis <3.566667> speed <94.999989> / animSpeed; //delta=3.17 
-			turn lrleg to y-axis <-7.366666> speed <1056.999880> / animSpeed; //delta=-35.23 
-			turn rfleg to y-axis <25.399996> speed <919.999792> / animSpeed; //delta=30.67 
-			turn rrleg to x-axis <3.700001> speed <68.999963> / animSpeed; //delta=2.30 
-			turn rrleg to z-axis <-3.566667> speed <94.999989> / animSpeed; //delta=-3.17 
-			turn rrleg to y-axis <7.366666> speed <1056.999880> / animSpeed; //delta=35.23 
-			turn turret to x-axis <5.599998> speed <219.0> / animSpeed; //delta=7.30 
-		sleep ((33*animSpeed) -1);
-		}
-		if (isMoving) { //Frame:20
-			move base to y-axis [0.0] speed [40.500001] / animSpeed; //delta=-1.35 
-			turn base to x-axis <-0.0> speed <398.999963> / animSpeed; //delta=13.30 
-			turn lfleg to y-axis <66.599993> speed <2759.999684> / animSpeed; //delta=92.00 
-			turn lrleg to x-axis <1.400000> speed <69.0> / animSpeed; //delta=2.30 
-			turn lrleg to z-axis <0.400000> speed <94.999996> / animSpeed; //delta=3.17 
-			turn lrleg to y-axis <-42.599996> speed <1056.999880> / animSpeed; //delta=-35.23 
-			turn rfleg to y-axis <-66.599993> speed <2759.999684> / animSpeed; //delta=-92.00 
-			turn rrleg to x-axis <1.400000> speed <69.0> / animSpeed; //delta=2.30 
-			turn rrleg to z-axis <-0.400000> speed <94.999996> / animSpeed; //delta=-3.17 
-			turn rrleg to y-axis <42.599996> speed <1056.999880> / animSpeed; //delta=35.23 
-			turn turret to x-axis <-0.0> speed <167.999935> / animSpeed; //delta=5.60 
-		sleep ((33*animSpeed) -1);
-		}
+	if( bMoving )
+	{
+		move lfupleg to y-axis [0.750000] speed [4.000000];
+		move lrupleg to y-axis [1.600000] speed [6.000000];
+		move rfupleg to y-axis [0.850000] speed [7.000000];
+		move rrupleg to y-axis [1.450000] speed [5.000000];
+		turn base to x-axis <0.000000> speed <188.000000>;
+		move base to y-axis [3] speed [10];
+		turn lfupleg to x-axis <53.010989> speed <670.000000>;
+		turn lrupleg to x-axis <-39.005495> speed <96.000000>;
+		turn rfupleg to x-axis <51.010989> speed <742.000000>;
+		turn rrupleg to x-axis <-32.005495> speed <100.000000>;
+		turn rrleg to x-axis <14.000000> speed <348.000000>;
+		turn rfleg to x-axis <-52.010989> speed <570.000000>;
+		turn lrleg to x-axis <25.005495> speed <314.000000>;
+		turn lfleg to x-axis <-52.010989> speed <465.000000>;
+		sleep 113;
 	}
-}
-// Call this from StopMoving()!
-StopWalking() {
-	move base to y-axis [0.0] speed [11.849999];
-	turn base to x-axis <0.0> speed <105.749994>;
-	turn lfleg to y-axis <0.0> speed <689.999921>;
-	turn lrleg to x-axis <0.0> speed <51.749999>;
-	turn lrleg to y-axis <0.0> speed <792.749910>;
-	turn lrleg to z-axis <0.0> speed <71.249973>;
-	turn rfleg to y-axis <0.0> speed <689.999921>;
-	turn rrleg to x-axis <0.0> speed <51.749999>;
-	turn rrleg to y-axis <0.0> speed <792.749910>;
-	turn rrleg to z-axis <0.0> speed <71.249973>;
-	turn turret to x-axis <0.0> speed <167.249980>;
-}
-// REMEMBER TO animspeed = 4 in Create() !!
-UnitSpeed(){
-	maxSpeed = get MAX_SPEED; // this returns cob units per frame i think
-	animFramesPerKeyframe = 4; //we need to calc the frames per keyframe value, from the known animtime
-	maxSpeed = maxSpeed + (maxSpeed /(2*animFramesPerKeyframe)); // add fudge
-	while(TRUE){
-		animSpeed = (get CURRENT_SPEED);
-		if (animSpeed<1) animSpeed=1;
-		animSpeed = (maxSpeed * 4) / animSpeed; 
-		//get PRINT(maxSpeed, animFramesPerKeyframe, animSpeed); //how to print debug info from bos
-		if (animSpeed<2) animSpeed=2;
-		if (animspeed>8) animSpeed = 8;
-		sleep 131;
+	if( bMoving )
+	{
+		move lrupleg to y-axis [1.819995] speed [4.000000];
+		move rrupleg to y-axis [1.719995] speed [4.000000];
+		turn base to x-axis <-12.000000> speed <241.000000>;
+		
+		move base to y-axis [2] speed [10];
+		turn lfupleg to x-axis <87.016484> speed <604.000000>;
+		turn lrupleg to x-axis <-61.010989> speed <380.000000>;
+		turn rfupleg to x-axis <82.016484> speed <562.000000>;
+		turn rrupleg to x-axis <-61.010989> speed <528.000000>;
+		turn rrleg to x-axis <72.016484> speed <1036.000000>;
+		turn rfleg to x-axis <-58.010989> speed <105.000000>;
+		turn lrleg to x-axis <71.016484> speed <820.000000>;
+		sleep 56;
+	}
+	if( bMoving )
+	{
+		move lrupleg to y-axis [1.650000] speed [3.000000];
+		move rrupleg to y-axis [1.700000] speed [0.000000];
+		turn base to x-axis <-26.005495> speed <232.000000>;
+		
+		move base to y-axis [0] speed [20];
+		turn lfupleg to x-axis <121.027473> speed <584.000000>;
+		turn lrupleg to x-axis <-32.005495> speed <498.000000>;
+		turn rfupleg to x-axis <114.027473> speed <543.000000>;
+		turn rrupleg to x-axis <-31.005495> speed <526.000000>;
+		turn rrleg to x-axis <54.010989> speed <306.000000>;
+		turn rfleg to x-axis <-63.010989> speed <102.000000>;
+		turn lrleg to x-axis <57.010989> speed <245.000000>;
+		sleep 58;
+	}
+	if( bMoving )
+	{
+		move lrupleg to y-axis [0.950000] speed [6.000000];
+		move rrupleg to y-axis [1.100000] speed [5.000000];
+		turn base to x-axis <0.000000> speed <232.000000>;
+		turn lfupleg to x-axis <60.010989> speed <545.000000>;
+		turn lrupleg to x-axis <3.000000> speed <321.000000>;
+		turn rfupleg to x-axis <53.010989> speed <545.000000>;
+		turn rrupleg to x-axis <-3.000000> speed <249.000000>;
+		turn rrleg to x-axis <30.005495> speed <219.000000>;
+		turn rfleg to x-axis <26.005495> speed <807.000000>;
+		turn lrleg to x-axis <22.000000> speed <308.000000>;
+		turn lfleg to x-axis <13.000000> speed <588.000000>;
+		sleep 112;
 	}
 }
 
-
-StartMoving(reversing){
-	signal SIGNAL_MOVE;
-	isMoving=TRUE;
-  set-signal-mask SIGNAL_MOVE;
-	start-script UnitSpeed();
-  start-script Walk();
+walklegs()
+{
+		if( bMoving )
+	{
+		move lfupleg to y-axis [0.000000] now;
+		move lfupleg to y-axis [0.250000] speed [2.000000];
+		move lrupleg to y-axis [0.000000] now;
+		move lrupleg to y-axis [0.900000] speed [8.000000];
+		move rrupleg to y-axis [0.000000] now;
+		move rrupleg to y-axis [0.800000] speed [7.000000];
+		turn base to x-axis <11.829670> now;
+		turn base to x-axis <22.000000> speed <94.000000>;
+		move base to y-axis [2] speed [20];
+		turn lfupleg to x-axis <-50.208791> now;
+		turn lfupleg to x-axis <-22.000000> speed <254.000000>;
+		turn lrupleg to x-axis <23.203297> now;
+		turn lrupleg to x-axis <-28.005495> speed <473.000000>;
+		turn rfupleg to x-axis <-49.269231> now;
+		turn rfupleg to x-axis <-32.005495> speed <150.000000>;
+		turn rrupleg to x-axis <27.472527> now;
+		turn rrupleg to x-axis <-20.000000> speed <439.000000>;
+		turn rrleg to x-axis <45.010989> now;
+		turn rrleg to x-axis <-24.005495> speed <633.000000>;
+		turn rfleg to x-axis <0.000000> now;
+		turn rfleg to x-axis <12.000000> speed <111.000000>;
+		turn lrleg to x-axis <44.527473> now;
+		turn lrleg to x-axis <-9.000000> speed <495.000000>;
+		sleep 110;
+	}
+	if( bMoving )
+	{
+		move lfupleg to y-axis [0.750000] speed [4.000000];
+		move lrupleg to y-axis [1.600000] speed [6.000000];
+		move rfupleg to y-axis [0.850000] speed [7.000000];
+		move rrupleg to y-axis [1.450000] speed [5.000000];
+		turn base to x-axis <0.000000> speed <188.000000>;
+		move base to y-axis [3] speed [10];
+		turn lfupleg to x-axis <53.010989> speed <670.000000>;
+		turn lrupleg to x-axis <-39.005495> speed <96.000000>;
+		turn rfupleg to x-axis <51.010989> speed <742.000000>;
+		turn rrupleg to x-axis <-32.005495> speed <100.000000>;
+		turn rrleg to x-axis <14.000000> speed <348.000000>;
+		turn rfleg to x-axis <-52.010989> speed <570.000000>;
+		turn lrleg to x-axis <25.005495> speed <314.000000>;
+		turn lfleg to x-axis <-52.010989> speed <465.000000>;
+		sleep 113;
+	}
+	if( bMoving )
+	{
+		move lrupleg to y-axis [1.819995] speed [4.000000];
+		move rrupleg to y-axis [1.719995] speed [4.000000];
+		turn base to x-axis <-12.000000> speed <241.000000>;
+		
+		move base to y-axis [2] speed [10];
+		turn lfupleg to x-axis <87.016484> speed <604.000000>;
+		turn lrupleg to x-axis <-61.010989> speed <380.000000>;
+		turn rfupleg to x-axis <82.016484> speed <562.000000>;
+		turn rrupleg to x-axis <-61.010989> speed <528.000000>;
+		turn rrleg to x-axis <72.016484> speed <1036.000000>;
+		turn rfleg to x-axis <-58.010989> speed <105.000000>;
+		turn lrleg to x-axis <71.016484> speed <820.000000>;
+		sleep 56;
+	}
+	if( bMoving )
+	{
+		move lrupleg to y-axis [1.650000] speed [3.000000];
+		move rrupleg to y-axis [1.700000] speed [0.000000];
+		turn base to x-axis <-26.005495> speed <232.000000>;
+		
+		move base to y-axis [0] speed [20];
+		turn lfupleg to x-axis <121.027473> speed <584.000000>;
+		turn lrupleg to x-axis <-32.005495> speed <498.000000>;
+		turn rfupleg to x-axis <114.027473> speed <543.000000>;
+		turn rrupleg to x-axis <-31.005495> speed <526.000000>;
+		turn rrleg to x-axis <54.010989> speed <306.000000>;
+		turn rfleg to x-axis <-63.010989> speed <102.000000>;
+		turn lrleg to x-axis <57.010989> speed <245.000000>;
+		sleep 58;
+	}
+	if( bMoving )
+	{
+		move lrupleg to y-axis [0.950000] speed [6.000000];
+		move rrupleg to y-axis [1.100000] speed [5.000000];
+		turn base to x-axis <0.000000> speed <232.000000>;
+		turn lfupleg to x-axis <60.010989> speed <545.000000>;
+		turn lrupleg to x-axis <3.000000> speed <321.000000>;
+		turn rfupleg to x-axis <53.010989> speed <545.000000>;
+		turn rrupleg to x-axis <-3.000000> speed <249.000000>;
+		turn rrleg to x-axis <30.005495> speed <219.000000>;
+		turn rfleg to x-axis <26.005495> speed <807.000000>;
+		turn lrleg to x-axis <22.000000> speed <308.000000>;
+		turn lfleg to x-axis <13.000000> speed <588.000000>;
+		sleep 112;
+	}
 }
-StopMoving(){
-	signal SIGNAL_MOVE;
-	isMoving=FALSE;
-	call-script StopWalking();
+
+MotionControl(moving, aiming, justmoved)
+{
+	justmoved = TRUE;
+	while( TRUE )
+	{
+		moving = bMoving;
+		aiming = bAiming;
+		if( moving )
+		{
+			if( aiming )
+			{
+				Static_Var_3 = 1;
+				call-script walklegs();
+			}
+			else
+			{
+				Static_Var_3 = 0;
+				call-script walk();
+			}
+			justmoved = TRUE;
+		}
+		else
+		{
+			Static_Var_3 = 1;
+			if( justmoved )
+			{
+				move lrupleg to y-axis [0.000000] speed [5.000000];
+				move rfupleg to y-axis [0.000000] speed [5.000000];
+				move rrupleg to y-axis [0.000000] speed [5.000000];
+				turn lfupleg to x-axis <0.000000> speed <200.000000>;
+				turn lrupleg to x-axis <0.000000> speed <200.000000>;
+				turn rfupleg to x-axis <0.000000> speed <200.000000>;
+				turn rrupleg to x-axis <0.000000> speed <200.000000>;
+				turn rrleg to x-axis <0.000000> speed <200.000000>;
+				turn lrleg to x-axis <0.000000> speed <200.000000>;
+				move base to y-axis [0] speed [20];
+				turn base to x-axis <0> speed <200>;
+				justmoved = FALSE;
+			}
+			sleep 100;
+		}
+	}
 }
 
-#define BASEPIECE base
-#define HITSPEED <105.0>
-//how 'heavy' the unit is, on a scale of 1-10
-#define UNITSIZE 1
-#define MAXTILT 100
-
-#include "../unit_hitbyweaponid_and_smoke.h"
+SmokeUnit(healthpercent, sleeptime, smoketype)
+{
+	while( get BUILD_PERCENT_LEFT )
+	{
+		sleep 500;
+	}
+	start-script MotionControl();
+	while( TRUE )
+	{
+		healthpercent = get HEALTH;
+		if( healthpercent < 66 )
+		{
+			smoketype = 258;
+			if( Rand( 1, 66 ) < healthpercent )
+			{
+				smoketype = 257;
+			}
+			emit-sfx smoketype from turret;
+		}
+		sleeptime = healthpercent * 50;
+		if( sleeptime < 200 )
+		{
+			sleeptime = 200;
+		}
+		sleep sleeptime;
+	}
+}
 
 Create()
 {
 	hide flare;
-	hide aimy1;
-	hide flare;
-	isMoving = FALSE;
-	isAiming = FALSE;
+	bMoving = FALSE;
+	bAiming = FALSE;
+	Static_Var_3 = 1;
 	restore_delay = 3000;
-	animSpeed = 4;
+	start-script SmokeUnit();
 }
 
-SetMaxReloadTime(reloadMS)
+SetMaxReloadTime(Func_Var_1)
 {
-	restore_delay = reloadMS * 2;
+	restore_delay = Func_Var_1 * 2;
 }
 
-
-
-static-var  Stunned;
-ExecuteRestoreAfterDelay()
+StartMoving()
 {
-    if (Stunned) {
-        return (1);
-    }
-	turn aimy1 to y-axis <0.0> speed <300.0>;
-	wait-for-turn aimy1 around y-axis;
-	wpn1_lasthead = 0xbadface;
-	isAiming = FALSE;
+	bMoving = TRUE;
 }
-SetStunned(State)
+
+StopMoving()
 {
-    Stunned = State;
-	if (!Stunned) {
-	    start-script ExecuteRestoreAfterDelay();
-	}
+	bMoving = FALSE;
 }
+
+SweetSpot(piecenum)
+{
+	piecenum = base;
+}
+
 RestoreAfterDelay()
 {
-	set-signal-mask SIGNAL_AIM1;
 	sleep restore_delay;
-	start-script ExecuteRestoreAfterDelay();
+	turn turret to y-axis <0.000000> speed <300.000000>;
+	wait-for-turn turret around y-axis;
+	bAiming = FALSE;
 }
 
-AimFromWeapon1(pieceIndex)
+AimFromPrimary(piecenum)
 {
-	pieceIndex = turret;
+	piecenum = turret;
 }
 
-QueryWeapon1(pieceIndex)
+QueryPrimary(piecenum)
 {
-	pieceIndex = flare;
+	piecenum = flare;
 }
 
-AimWeapon1(heading, pitch)
+AimPrimary(heading, pitch)
 {
-	signal SIGNAL_AIM1;
-	isAiming = TRUE;
-	turn aimy1 to y-axis heading speed <450.0>;
-
-	if ((wpn1_lasthead == 0xbadface) OR ABSOLUTE_GREATER_THAN(WRAPDELTA(heading - wpn1_lasthead), <7>))
+	signal SIG_AIM;
+	set-signal-mask SIG_AIM;
+	bAiming = TRUE;
+	while( !Static_Var_3 )
 	{
-		wpn1_lasthead = 0xbadface;
-		wait-for-turn aimy1 around y-axis;
+		sleep 100;
 	}
-	wpn1_lasthead = heading;
+	turn turret to y-axis heading speed <450.000000>;
+	wait-for-turn turret around y-axis;
 	start-script RestoreAfterDelay();
 	return (1);
 }
 
-FireWeapon1()
+FirePrimary()
 {
-	emit-sfx 1024 + 0 from flare;
+	show flare;
+	sleep 100;
+	hide flare;
 }
 
 Killed(severity, corpsetype)
@@ -218,26 +351,62 @@ Killed(severity, corpsetype)
 	if( severity <= 25 )
 	{
 		corpsetype = 1 ;
-		explode turret type BITMAPONLY | NOHEATCLOUD;
-		explode flare type BITMAPONLY | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type BITMAPONLY;
+		explode flare type BITMAPONLY;
+		explode lrupleg type FIRE | SMOKE | FALL;
+		explode lrleg type FIRE | SMOKE | FALL;
+		explode lfupleg type BITMAPONLY;
+		explode lfleg type BITMAPONLY;
+		explode rfupleg type BITMAPONLY;
+		explode rfleg type BITMAPONLY;
+		explode rrupleg type BITMAPONLY;
+		explode rrleg type BITMAPONLY;
 		return(corpsetype);
 	}
 	if( severity <= 50 )
 	{
 		corpsetype = 2 ;
-		explode turret type FALL | NOHEATCLOUD;
-		explode flare type FALL | NOHEATCLOUD;
+		explode base type BITMAPONLY;
+		explode turret type FALL;
+		explode flare type FALL;
+		explode lrupleg type FALL;
+		explode lrleg type FIRE | SMOKE | FALL;
+		explode lfupleg type FIRE | SMOKE | FALL;
+		explode lfleg type FIRE | SMOKE | FALL;
+		explode rfupleg type FALL;
+		explode rfleg type FALL;
+		explode rrupleg type FALL;
+		explode rrleg type FALL;
 		return(corpsetype);
 	}
 	if( severity <= 99 )
 	{
 		corpsetype = 3 ;
-		explode turret type SMOKE | FALL | NOHEATCLOUD;
-		explode flare type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
+		explode base type FIRE | SMOKE | FALL;
+		explode turret type SMOKE | FALL;
+		explode flare type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode lrupleg type SMOKE | FALL;
+		explode lrleg type SHATTER;
+		explode lfupleg type SMOKE | FALL;
+		explode lfleg type SHATTER;
+		explode rfupleg type FIRE | SMOKE | FALL;
+		explode rfleg type SHATTER;
+		explode rrupleg type EXPLODE_ON_HIT | SMOKE | FALL;
+		explode rrleg type SHATTER;
 		return(corpsetype);
 	}
 	corpsetype = 3 ;
-		explode turret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL | NOHEATCLOUD;
-		explode flare type EXPLODE_ON_HIT | FIRE | FALL | NOHEATCLOUD;
+		explode base type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode turret type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode flare type EXPLODE_ON_HIT | FIRE | FALL;
+		explode lrupleg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode lrleg type SHATTER;
+		explode lfupleg type EXPLODE_ON_HIT | FIRE | FALL;
+		explode lfleg type SHATTER;
+		explode rfupleg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode rfleg type SHATTER;
+		explode rrupleg type EXPLODE_ON_HIT | FIRE | SMOKE | FALL;
+		explode rrleg type SHATTER;
 	return corpsetype;
 }
