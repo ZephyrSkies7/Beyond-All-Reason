@@ -37,8 +37,7 @@ local spGetGameRulesParam = Spring.GetGameRulesParam
 local spGetMyTeamID = Spring.GetMyTeamID
 local spI18N = Spring.I18N
 
--- WG function references populated in initialize() to respect load order
-local wgBuildMenu, wgGridMenu, wgTopbar, wgPregameBuild, wgPregameUI, wgPregameUIDraft, wgPregameUnitSelected
+local wgBuildMenu, wgGridMenu, wgTopbar, wgPregameBuild, wgPregameUI, wgPregameUIDraft, wgGetBuildQueueFunc, wgGetBuildPositionsFunc, wgGetPregameUnitSelectedFunc
 
 local MODEL_NAME = "quick_start_model"
 local RML_PATH = "luaui/RmlWidgets/gui_quick_start/gui_quick_start.rml"
@@ -51,8 +50,8 @@ local TRAVERSABILITY_GRID_GENERATION_RANGE = 576 --must match the value in game_
 local TRAVERSABILITY_GRID_RESOLUTION = 32
 local GRID_CHECK_RESOLUTION_MULTIPLIER = 1
 
-local traversabilityGrid = VFS.Include("luarules/Utilities/traversability_grid.lua")
-local aestheticCustomCostRound = VFS.Include("LuaRules/Utilities/aestheticCustomCostRound.lua")
+local traversabilityGrid = VFS.Include("common/traversability_grid.lua")
+local aestheticCustomCostRound = VFS.Include("common/aestheticCustomCostRound.lua")
 local customRound = aestheticCustomCostRound.customRound
 local lastCommanderX = nil
 local lastCommanderZ = nil
@@ -79,7 +78,6 @@ local widgetState = {
 	lastBudgetRemaining = 0,
 	deductionElements = {},
 	currentDeductionIndex = 1,
-	lastMousePos = {0, 0},
 	warningsHidden = false,
 	warningElements = {
 		warningText = nil,
@@ -122,17 +120,14 @@ local function isWithinBuildRange(commanderX, commanderZ, buildX, buildZ, instan
 		return false
 	end
 
-	local myTeamID = spGetMyTeamID()
-	local startDefID = Spring.GetTeamRulesParam(myTeamID, "startUnit")
-
-	if startDefID and traversabilityGrid.canMoveToPosition(startDefID, buildX, buildZ, GRID_CHECK_RESOLUTION_MULTIPLIER) then
+	if traversabilityGrid.canMoveToPosition("myGrid", buildX, buildZ, GRID_CHECK_RESOLUTION_MULTIPLIER) then
 		return true
 	end
 
 	return false
 end
 
-local function getCachedGameRules(myTeamID)
+local function getCachedGameRules()
 	local currentTime = os.clock()
 	if currentTime - lastRulesUpdate > RULES_CACHE_DURATION then
 		cachedGameRules.budgetTotal = spGetGameRulesParam("quickStartBudgetBase") or 0
@@ -160,7 +155,7 @@ local function updateTraversabilityGrid()
 		return
 	end
 	if lastCommanderX ~= commanderX or lastCommanderZ ~= commanderZ then
-		traversabilityGrid.generateTraversableGrid(startDefID, commanderX, commanderZ, TRAVERSABILITY_GRID_GENERATION_RANGE, TRAVERSABILITY_GRID_RESOLUTION, startDefID)
+		traversabilityGrid.generateTraversableGrid(commanderX, commanderZ, TRAVERSABILITY_GRID_GENERATION_RANGE, TRAVERSABILITY_GRID_RESOLUTION, "myGrid")
 		lastCommanderX = commanderX
 		lastCommanderZ = commanderZ
 	end
@@ -244,9 +239,9 @@ end
 
 local function computeProjectedUsage()
 	local myTeamID = spGetMyTeamID()
-	local gameRules = getCachedGameRules(myTeamID)
-	local pregame = wgPregameBuild and wgPregameBuild.getBuildQueue and wgPregameBuild.getBuildQueue() or {}
-	local pregameUnitSelected = wgPregameUnitSelected or -1
+	local gameRules = getCachedGameRules()
+	local pregame = wgGetBuildQueueFunc and wgGetBuildQueueFunc() or {}
+	local pregameUnitSelected = wgGetPregameUnitSelectedFunc and wgGetPregameUnitSelectedFunc() or -1
 
 	local budgetUsed = 0
 	local firstFactoryPlaced = false
@@ -273,21 +268,33 @@ local function computeProjectedUsage()
 	if pregameUnitSelected > 0 and UnitDefs[pregameUnitSelected] then
 		local uDef = UnitDefs[pregameUnitSelected]
 		local mx, my = Spring.GetMouseState()
-		
-		local mouseMoved = mx ~= widgetState.lastMousePos[1] or my ~= widgetState.lastMousePos[2]
-		if mouseMoved then
-			widgetState.lastMousePos[1] = mx
-			widgetState.lastMousePos[2] = my
-		end
-		
-		local _, pos = Spring.TraceScreenRay(mx, my, true, false, false,
-			uDef.modCategories and uDef.modCategories.underwater)
-		if pos then
-			local buildFacing = Spring.GetBuildFacing()
-			local bx, by, bz = Spring.Pos2BuildPos(pregameUnitSelected, pos[1], pos[2], pos[3], buildFacing)
 
-			if isWithinBuildRange(commanderX, commanderZ, bx, bz, gameRules.instantBuildRange) then
-				budgetProjected = calculateBudgetForItem(pregameUnitSelected, gameRules, shouldApplyFactoryDiscount, not firstFactoryPlaced)
+		local positionsToCheck = {}
+		local getBuildPositions = wgGetBuildPositionsFunc
+		local buildPositions = getBuildPositions and getBuildPositions() or nil
+
+		if buildPositions and #buildPositions > 0 then
+			positionsToCheck = buildPositions
+		else
+			local _, pos = Spring.TraceScreenRay(mx, my, true, false, false,
+				uDef.modCategories and uDef.modCategories.underwater)
+			if pos then
+				positionsToCheck = {{x = pos[1], y = pos[2], z = pos[3]}}
+			end
+		end
+
+		local canApplyFactoryDiscount = not firstFactoryPlaced and uDef.isFactory and shouldApplyFactoryDiscount
+		local isMultiUnitMode = buildPositions and #buildPositions > 0
+		local isFirstFactoryInMultiUnit = isMultiUnitMode and canApplyFactoryDiscount
+
+		for _, pos in ipairs(positionsToCheck) do
+			if isWithinBuildRange(commanderX, commanderZ, pos.x, pos.z, gameRules.instantBuildRange) then
+				local isFirstFactory = isFirstFactoryInMultiUnit or (not isMultiUnitMode and canApplyFactoryDiscount)
+				local cost = calculateBudgetForItem(pregameUnitSelected, gameRules, shouldApplyFactoryDiscount, isFirstFactory)
+				budgetProjected = budgetProjected + cost
+				if isFirstFactory then
+					isFirstFactoryInMultiUnit = false
+				end
 			end
 		end
 	end
@@ -327,7 +334,7 @@ local function updateAllCostOverrides()
 	end
 
 	local myTeamID = spGetMyTeamID()
-	local gameRules = getCachedGameRules(myTeamID)
+	local gameRules = getCachedGameRules()
 	local buildQueue = wgPregameBuild and wgPregameBuild.getBuildQueue and wgPregameBuild.getBuildQueue() or {}
 
 	local factoryAlreadyPlaced = false
@@ -420,7 +427,7 @@ local function updateDataModel(forceUpdate)
 	widgetState.lastBudgetRemaining = currentBudgetRemaining
 	
 	local myTeamID = spGetMyTeamID()
-	local gameRules = getCachedGameRules(myTeamID)
+	local gameRules = getCachedGameRules()
 	local budgetThreshold = gameRules.budgetThresholdToAllowStart or 0
 	local hasUnallocatedBudget = currentBudgetRemaining > budgetThreshold
 	
@@ -465,7 +472,7 @@ end
 
 local function getBuildQueueSpawnStatus(buildQueue, selectedBuildData)
 	local myTeamID = spGetMyTeamID()
-	local gameRules = getCachedGameRules(myTeamID)
+	local gameRules = getCachedGameRules()
 	local spawnResults = {
 		queueSpawned = {},
 		selectedSpawned = false
@@ -549,7 +556,9 @@ function widget:Initialize()
 	wgPregameBuild = WG['pregame-build']
 	wgPregameUI = WG['pregameui']
 	wgPregameUIDraft = WG['pregameui_draft']
-	wgPregameUnitSelected = WG['pregame-unit-selected']
+	wgGetBuildQueueFunc = wgPregameBuild and wgPregameBuild.getBuildQueue
+	wgGetBuildPositionsFunc = wgPregameBuild and wgPregameBuild.getBuildPositions
+	wgGetPregameUnitSelectedFunc = function() return WG['pregame-unit-selected'] or -1 end
 
 	updateUIElementText(document, "qs-budget-header", spI18N('ui.quickStart.preGameResources'))
 	updateUIElementText(document, "qs-warning-text", spI18N('ui.quickStart.remainingResourcesWarning'))
