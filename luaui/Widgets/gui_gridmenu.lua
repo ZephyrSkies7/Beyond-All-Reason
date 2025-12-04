@@ -163,6 +163,7 @@ local costOverrides = {}
 -------------------------------------------------------------------------------
 
 include("keysym.h.lua")
+local windFunctions = VFS.Include('common/wind_functions.lua')
 
 local keyConfig = VFS.Include("luaui/configs/keyboard_layouts.lua")
 local currentLayout = Spring.GetConfigString("KeyboardLayout", "qwerty")
@@ -1296,6 +1297,9 @@ function widget:Initialize()
 	doUpdateClock = os.clock()
 
 	units.checkGeothermalFeatures()
+	if windFunctions.isWindDisabled() then
+		units.restrictWindUnits(true)
+	end
 
 	widgetHandler.actionHandler:AddAction(self, "gridmenu_key", gridmenuKeyHandler, nil, "pR")
 	widgetHandler.actionHandler:AddAction(self, "gridmenu_category", gridmenuCategoryHandler, nil, "p")
@@ -1998,11 +2002,11 @@ local function drawCell(rect)
 	-- price
 	if metalPrice then
 		local costOverride = costOverrides and costOverrides[uid]
-		
+
 		if costOverride then
 			local topValue = costOverride.top and costOverride.top.value or metalPrice
 			local bottomValue = costOverride.bottom and costOverride.bottom.value or energyPrice
-			
+
 			if costOverride.top and not costOverride.top.disabled then
 				local costColor = costOverride.top.color or "\255\100\255\100"
 				if disabled then
@@ -2028,7 +2032,7 @@ local function drawCell(rect)
 					"ro"
 				)
 			end
-			
+
 			if costOverride.bottom and not costOverride.bottom.disabled then
 				local costColor = costOverride.bottom.color or "\255\255\255\000"
 				if disabled then
@@ -2414,6 +2418,7 @@ end
 local function drawBuildMenu()
 	font2:Begin(useRenderToTexture)
 	font2:SetTextColor(1,1,1,1)
+	font2:SetOutlineColor(0,0,0,1)
 
 	local drawBackScreen = (currentCategory and not builderIsFactory)
 		or (builderIsFactory and useLabBuildMode and labBuildModeActive)
@@ -2579,18 +2584,35 @@ function widget:MousePress(x, y, button)
 								pickBlueprint(unitDefID)
 							end
 						elseif builderIsFactory and spGetCmdDescIndex(-unitDefID) then
-							if not (WG.Quotas and WG.Quotas.isOnQuotaMode(activeBuilderID) and not alt) then
+							local function decreaseQuota()
+								local amount = modKeyMultiplier.click.right
+								if ctrl then amount = amount * modKeyMultiplier.click.ctrl end
+								if shift then amount = amount * modKeyMultiplier.click.shift end
+								updateQuotaNumber(unitDefID, amount)
+							end
+
+							local function decreaseQueue()
 								Spring.PlaySoundFile(CONFIG.sound_queue_rem, 0.75, "ui")
 								setActiveCommand(spGetCmdDescIndex(-unitDefID), 3, false, true)
+							end
+
+							local isQuotaMode = WG.Quotas and WG.Quotas.isOnQuotaMode(activeBuilderID) and not alt
+							local queueCount = tonumber(cellRect.opts.queuenr or 0)
+							local quotas = WG.Quotas and WG.Quotas.getQuotas()
+							local currentQuota = (quotas and quotas[activeBuilderID] and quotas[activeBuilderID][unitDefID]) or 0
+
+							if isQuotaMode then
+								if currentQuota > 0 then
+									decreaseQuota()
+								else
+									decreaseQueue()
+								end
 							else
-								local amount = modKeyMultiplier.click.right
-								if ctrl then
-									amount = amount * modKeyMultiplier.click.ctrl
+								if queueCount > 0 then
+									decreaseQueue()
+								else
+									decreaseQuota()
 								end
-								if shift then
-									amount = amount * modKeyMultiplier.click.shift
-								end
-								updateQuotaNumber(unitDefID, amount)
 							end
 						end
 

@@ -162,7 +162,6 @@ local armorDefs = {
 		"armstump",
 		"armsy",
 		"armtarg",
-		"armthovr",
 		"armtide",
 		"armuwes",
 		"armuwfus",
@@ -252,9 +251,9 @@ local armorDefs = {
 		"corsolar",
 		"corstorm",
 		"corsy",
+		"legsy",
 		"cortarg",
 		"cortermite",
-		"corthovr",
 		"cortorch",
 		"corthud",
 		"cortide",
@@ -289,7 +288,6 @@ local armorDefs = {
 		"corparrow",
 		"corseal",
 		"corsala",
-		"corintr",
 		"armmar",
 		"corshiva",
         "cormadsam",
@@ -628,6 +626,11 @@ local armorDefs = {
 		"leghastatusalt",
 		"legoptio",
 		"legpontus",
+
+		"legnavyscout",
+		"legnavyfrigate",
+		"legnavyaaship",
+		"legnavyconship",
 	},
 
 	hvyboats = {
@@ -645,13 +648,14 @@ local armorDefs = {
 		"cormship",
 		"armcarry",
 		"corcarry",
-		"armtship",
-		"cortship",
 		"armbats",
 		"corbats",
 		"armepoch",
 		"corprince",
 		"corblackhy",
+
+		"legnavydestro",
+		"legnavyartyship",
 	},
 
 	subs = {
@@ -666,10 +670,13 @@ local armorDefs = {
         "coracsub",
 		"armrecl",
 		"correcl",
+		"legnavyrezsub",
 		"coronager",
 		"cordesolator",
 		"armexcalibur",
 		"armseadragon",
+
+		"legnavysub",
 	},
 
 	raptor =
@@ -750,5 +757,24 @@ for category, names in pairs(armorDefs) do
 end
 
 table.mergeInPlace(armorDefs, scavArmorDefs)
+
+local function clearArmorDef(unitDefName)
+	for _, category in pairs(armorDefs) do
+		if table.removeFirst(category, unitDefName) then
+			return
+		end
+	end
+end
+
+-- expose armor defs to custom params
+for unitName, unitDef in pairs (DEFS.unitDefs) do
+	if unitDef.customparams and unitDef.customparams.armordef then
+		local defCategory = armorDefs[unitDef.customparams.armordef]
+		if defCategory then
+			clearArmorDef(unitName)
+			defCategory[#defCategory+1] = unitName
+		end
+	end
+end
 
 return armorDefs
