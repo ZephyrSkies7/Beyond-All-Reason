@@ -228,8 +228,7 @@ local moveDatas = {
 		badslope = 36,
 		badwaterslope = 255,
 		crushstrength = 252,
-		footprintx = 7,
-		footprintz = 7,
+		footprint = 7,
 		maxslope = 36,
 		slopeMod = 18,
 		maxwaterslope = 255,
@@ -289,7 +288,7 @@ local moveDatas = {
 		crushstrength = CRUSH.TINY,
 		footprint = 2,
 		maxslope = SLOPE.DIFFICULT,
-		maxwaterdepth = DEPTH.TICKSHALLOW,
+		maxwaterdepth = DEPTH.TICK,
 		depthModParams = depthModGeneric,
 	},
 	--cornecro leggob legkark armpw armfark armrectr corak corfast corspy leglob armspy

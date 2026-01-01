@@ -199,6 +199,28 @@ local ColorIsDark = Spring.Utilities.Color.ColorIsDark
 
 local soundErrors = {}
 
+-- Filter color codes and control characters from player input to prevent injection
+-- Based on engine TextWrap.h constants
+local function stripColorCodes(text)
+	local result = text
+	-- Remove color codes and control characters according to Spring's TextWrap.h:
+	-- ColorCodeIndicator (0xFF / \255) - followed by 3 bytes RGB
+	result = result:gsub("\255...", "")
+	result = result:gsub("\255", "")  -- ÿ
+	result = result:gsub("ÿ", "")  -- ÿ
+	-- ColorCodeIndicatorEx (0xFE / \254) - followed by 8 bytes RGBA + outline RGBA
+	result = result:gsub("\254........", "")
+	result = result:gsub("\254", "")  -- þ
+	result = result:gsub("þ", "")  -- þ
+	-- ColorResetIndicator (0x08 / \008) - reset to default color
+	result = result:gsub("\008", "")
+	-- SetColorIndicator (0x01 / \001) - followed by 3 bytes RGB (legacy)
+	result = result:gsub("\001...", "")
+	-- Also strip any remaining standalone control characters that might affect rendering
+	result = result:gsub("\001", "")  -- SOH
+	return result
+end
+
 local autocompleteCommands = {
 	-- engine
 	'advmapshading',
@@ -427,6 +449,10 @@ local autocompleteCommands = {
 	'luarules zombieclearallorders',
 	'luarules zombiedebug 0',
 	'luarules zombiemode normal',
+
+	-- build blocking commands
+	'luarules buildblock all default_reason',
+	'luarules buildunblock all default_reason',
 
 	-- widgets
 	'luaui reload',
@@ -813,6 +839,9 @@ local function processAddConsoleLine(gameFrame, line, orgLineID, reprocessID)
 			text = ssub(text,2)
 		end
 
+		-- Filter color codes from player input
+		text = stripColorCodes(text)
+
 		nameText = getPlayerColorString(name, gameFrame)..(playernames[name] and playernames[name][7] or name)
 		line = ColorString(c[1],c[2],c[3])..text
 
@@ -847,6 +876,9 @@ local function processAddConsoleLine(gameFrame, line, orgLineID, reprocessID)
 			text = ssub(text,2)
 		end
 
+		-- Filter color codes from spectator input
+		text = stripColorCodes(text)
+
 		nameText = ColorString(colorSpec[1],colorSpec[2],colorSpec[3])..'(s) '..(playernames[name] and playernames[name][7] or name)
 		line = ColorString(c[1],c[2],c[3])..text
 
@@ -855,6 +887,10 @@ local function processAddConsoleLine(gameFrame, line, orgLineID, reprocessID)
 		lineType = LineTypes.Mapmark
 		name = ssub(line,1,sfind(line," added point: ", nil, true)-1)
 		text = ssub(line,slen(name.." added point: ")+1)
+
+		-- Filter color codes from mapmark text
+		text = stripColorCodes(text)
+
 		if text == '' then
 			text = 'Look here!'
 		end
@@ -910,6 +946,9 @@ local function processAddConsoleLine(gameFrame, line, orgLineID, reprocessID)
 		if ssub(text,1,1) == ' ' then
 			text = ssub(text,2)
 		end
+
+		-- Filter color codes from battleroom input
+		text = stripColorCodes(text)
 
 		nameText = ColorString(colorGame[1],colorGame[2],colorGame[3])..'<'..(playernames[name] and playernames[name][7] or name)..'>'
 		line = ColorString(colorGame[1],colorGame[2],colorGame[3])..text
